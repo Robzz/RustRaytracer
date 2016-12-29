@@ -7,8 +7,13 @@ mod surface;
 mod scene;
 mod camera;
 
-use nalgebra::Point3;
+use image::Rgb;
+use std::path::Path;
+use scene::Scene;
 
 fn main() {
-    println!("Yep");
+    let output_path = Path::new("render.png");
+    let scene = Scene::new(Rgb { data: [90, 90, 90] });
+    let render = scene.render(400, 300);
+    render.save(output_path).expect("Cannot save output image");
 }
