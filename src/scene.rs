@@ -1,12 +1,20 @@
 use image::Rgb;
 
 pub struct Scene {
-    pub background: Rgb<u8>
+    bg: Rgb<u8>,
 }
 
 impl Scene {
     pub fn new(background: Rgb<u8>) -> Scene {
-        Scene { background: background }
+        Scene { bg: background }
+    }
+
+    pub fn background(&self) -> Rgb<u8> {
+        self.bg
+    }
+
+    pub fn set_background(&mut self, background: Rgb<u8>) {
+        self.bg = background;
     }
 }
 
@@ -18,6 +26,6 @@ mod tests {
     fn test_new_scene() {
         let c = Rgb { data: [90, 90, 90] };
         let scene = Scene::new(c);
-        assert!(scene.background == c);
+        assert!(scene.background() == c);
     }
 }
