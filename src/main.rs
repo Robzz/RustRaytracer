@@ -5,6 +5,7 @@ mod ray;
 mod face;
 mod surface;
 mod scene;
+mod camera;
 
 use nalgebra::Point3;
 
