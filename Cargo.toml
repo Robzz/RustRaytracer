@@ -1,0 +1,8 @@
+[package]
+name = "projet"
+version = "0.1.0"
+authors = ["R.Chavignat <r.chavignat@gmail.com>"]
+
+[dependencies]
+image = "0.10.4"
+nalgebra = "0.10.1"
