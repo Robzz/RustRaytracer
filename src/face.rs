@@ -1,4 +1,4 @@
-use nalgebra::{Matrix4};
+use nalgebra::*;
 use surface::Surface;
 use intersection::Intersection;
 use ray::Ray;
@@ -6,16 +6,21 @@ use ray::Ray;
 #[derive(Debug, Clone, PartialEq)]
 /// Represent a rectangular face.
 /// The default face (i.e. with the identity transform) is considered to be
-/// aligned on the XY plane, facing the -Z direction, centered on the origin.
+/// aligned on the XY plane, facing the Z direction (i.e. normal has positive Z),
+/// centered on the origin.
 pub struct Face {
     pub width: f64,
     pub height: f64,
-    pub transform: Matrix4<f64>
+    pub transform: Isometry3<f64>
 }
 
 impl Face {
-    pub fn new(width: f64, height: f64, transform: Matrix4<f64>) -> Face {
+    pub fn new(width: f64, height: f64, transform: Isometry3<f64>) -> Face {
         Face { width: width, height: height, transform: transform }
+    }
+
+    pub fn normal(&self) -> Vector3<f64> {
+        self.transform * Vector3::<f64>::z()
     }
 }
 
@@ -33,17 +38,18 @@ impl Surface for Face {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use nalgebra::Eye;
+    use std::f64::consts::PI;
+    use num_traits::identities::One;
 
     fn test_face() -> Face {
-        Face::new(3., 1., Matrix4::new_identity(4))
+        Face::new(3., 1., Isometry3::one())
     }
 
     #[test]
     fn test_new_face() {
         let w = 3.;
         let h = 1.;
-        let m = Matrix4::new_identity(4);
+        let m = Isometry3::one();
         let f = Face::new(w, h, m);
         assert!(f.width == w);
         assert!(f.height == h);
@@ -56,5 +62,20 @@ mod tests {
         let mut v = f.faces();
         assert!(v.len() == 1);
         assert!(v.pop() == Some(f));
+    }
+
+    #[test]
+    fn test_normal_untransformed_face() {
+        let f = test_face();
+        let n = f.normal();
+        assert!(n.approx_eq(&Vector3::z()));
+    }
+
+    #[test]
+    fn test_normal_rotated_face() {
+        let mut f = test_face();
+        f.transform.rotation = Rotation3::new(Vector3::y() * (PI / 2.));
+        let n = f.normal();
+        assert!(n.approx_eq(&Vector3::x()));
     }
 }

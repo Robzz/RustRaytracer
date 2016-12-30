@@ -5,6 +5,7 @@
 extern crate docopt;
 extern crate image;
 extern crate nalgebra;
+extern crate num_traits;
 extern crate rustc_serialize;
 
 mod ray;
