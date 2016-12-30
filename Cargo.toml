@@ -1,5 +1,5 @@
 [package]
-name = "projet"
+name = "rust-raytracer"
 version = "0.1.0"
 authors = ["R.Chavignat <r.chavignat@gmail.com>"]
 
