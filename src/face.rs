@@ -1,5 +1,7 @@
 use nalgebra::{Matrix4};
 use surface::Surface;
+use intersection::Intersection;
+use ray::Ray;
 
 #[derive(Debug, Clone, PartialEq)]
 /// Represent a rectangular face.
@@ -20,6 +22,11 @@ impl Face {
 impl Surface for Face {
     fn faces(&self) -> Vec<Face> {
         vec![self.clone()]
+    }
+
+    fn intersects(&self, ray: &Ray) -> Option<Intersection> {
+        // Stub
+        None
     }
 }
 
