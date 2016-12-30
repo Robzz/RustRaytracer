@@ -1,5 +1,6 @@
 #![feature(plugin)]
 #![plugin(docopt_macros)]
+#![allow(dead_code)]
 
 extern crate docopt;
 extern crate image;
@@ -11,6 +12,7 @@ mod face;
 mod surface;
 mod scene;
 mod camera;
+mod intersection;
 
 use image::Rgb;
 use std::path::Path;
