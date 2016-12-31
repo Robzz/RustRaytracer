@@ -2,6 +2,7 @@ use nalgebra::*;
 use surface::Surface;
 use intersection::Intersection;
 use ray::Ray;
+use num_traits::identities::{Zero, One};
 
 #[derive(Debug, Clone, PartialEq)]
 /// Represent a rectangular face.
@@ -30,8 +31,20 @@ impl Surface for Face {
     }
 
     fn intersects(&self, ray: &Ray) -> Option<Intersection> {
-        // Stub
-        None
+        let p = self.transform.transform(&Point3::new(0., 0., 0.));
+        let n = self.normal();
+        let d = dot(&ray.direction, &n);
+        match d.approx_eq(&0.) {
+            true => None,
+            false => {
+                let t = dot(&(p - ray.origin), &n) / d;
+                let i = ray.origin + t * ray.direction;
+                match t < 0. {
+                    true => None,
+                    false => Some(Intersection::new(i, norm(&(i - ray.origin))))
+                }
+            }
+        }
     }
 }
 
@@ -39,7 +52,6 @@ impl Surface for Face {
 mod tests {
     use super::*;
     use std::f64::consts::PI;
-    use num_traits::identities::One;
 
     fn test_face() -> Face {
         Face::new(3., 1., Isometry3::one())
@@ -61,7 +73,7 @@ mod tests {
         let f = test_face();
         let mut v = f.faces();
         assert!(v.len() == 1);
-        assert!(v.pop() == Some(f));
+         assert!(v.pop() == Some(f));
     }
 
     #[test]
@@ -77,5 +89,21 @@ mod tests {
         f.transform.rotation = Rotation3::new(Vector3::y() * (PI / 2.));
         let n = f.normal();
         assert!(n.approx_eq(&Vector3::x()));
+    }
+
+    #[test]
+    fn test_surface_intersects() {
+        let f = Face::new(3., 3., Isometry3::from_rotation_matrix(Vector3::new(0., 0., -5.), Rotation3::one()));
+        let i_opt = f.intersects(&Ray::new(Point3::new(0., 0., 0.), -Vector3::z()));
+        assert!(i_opt.is_some());
+        let i = i_opt.unwrap();
+        assert!(i.position.approx_eq(&Point3::new(0., 0., -5.,)));
+        assert!(i.distance.approx_eq(&5.));
+    }
+
+    #[test]
+    fn test_surface_no_intersects_behind() {
+        let f = Face::new(3., 3., Isometry3::from_rotation_matrix(Vector3::new(0., 0., 5.), Rotation3::one()));
+        assert!(f.intersects(&Ray::new(Point3::new(0., 0., 0.), -Vector3::z())).is_none());
     }
 }
