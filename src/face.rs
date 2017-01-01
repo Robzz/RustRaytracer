@@ -37,11 +37,21 @@ impl Surface for Face {
         match d.approx_eq(&0.) {
             true => None,
             false => {
+                // Ray is not parallel to plane
+                // Find if the intersection is in the positive direction
                 let t = dot(&(p - ray.origin), &n) / d;
-                let i = ray.origin + t * ray.direction;
                 match t < 0. {
                     true => None,
-                    false => Some(Intersection::new(i, norm(&(i - ray.origin))))
+                    false => {
+                        // Find the intersection point on the face's plane and
+                        // make sure it's within the face
+                        let i_world = ray.origin + t * ray.direction;
+                        let i_local = self.transform.inverse().unwrap().transform(&i_world);
+                        match (abs(&i_local.x) <= (self.width / 2.)) && (abs(&i_local.y) <= (self.height / 2.)) {
+                            true => Some(Intersection::new(i_world, norm(&(i_world - ray.origin)))),
+                            false => None
+                        }
+                    }
                 }
             }
         }
@@ -99,6 +109,13 @@ mod tests {
         let i = i_opt.unwrap();
         assert!(i.position.approx_eq(&Point3::new(0., 0., -5.,)));
         assert!(i.distance.approx_eq(&5.));
+    }
+
+    #[test]
+    fn test_surface_no_intersects() {
+        let f = Face::new(3., 3., Isometry3::from_rotation_matrix(Vector3::new(2., 0., -5.), Rotation3::one()));
+        let i_opt = f.intersects(&Ray::new(Point3::new(0., 0., 0.), -Vector3::z()));
+        assert!(i_opt.is_none());
     }
 
     #[test]
