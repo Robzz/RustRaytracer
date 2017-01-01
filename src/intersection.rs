@@ -1,5 +1,6 @@
 use nalgebra::Point3;
 
+#[derive(Debug)]
 pub struct Intersection {
     pub position: Point3<f64>,
     pub distance: f64

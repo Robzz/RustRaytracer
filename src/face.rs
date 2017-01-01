@@ -2,7 +2,6 @@ use nalgebra::*;
 use surface::Surface;
 use intersection::Intersection;
 use ray::Ray;
-use num_traits::identities::{Zero, One};
 
 #[derive(Debug, Clone, PartialEq)]
 /// Represent a rectangular face.
@@ -62,6 +61,7 @@ impl Surface for Face {
 mod tests {
     use super::*;
     use std::f64::consts::PI;
+    use num_traits::identities::One;
 
     fn test_face() -> Face {
         Face::new(3., 1., Isometry3::one())

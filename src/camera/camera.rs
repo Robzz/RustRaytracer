@@ -1,4 +1,3 @@
-use nalgebra::{Point3, Vector3};
 use ray::Ray;
 
 pub trait Camera {

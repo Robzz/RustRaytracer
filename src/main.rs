@@ -14,10 +14,16 @@ mod surface;
 mod scene;
 mod camera;
 mod intersection;
+//mod object;
 
 use image::Rgb;
 use std::path::Path;
 use scene::Scene;
+use face::Face;
+use nalgebra::*;
+use std::f64::consts::PI;
+use camera::Orthographic;
+use num_traits::Zero;
 
 docopt!(Args, "
 Usage: raytrace <output> <width> <height>
@@ -34,7 +40,11 @@ fn main() {
     let output = args.arg_output;
 
     let output_path = Path::new(&output);
-    let scene = Scene::new(Rgb { data: [90, 90, 90] });
-    let render = scene.render(width, height);
+    let f = Face::new(50., 20., Isometry3::new(Vector3::z() * 50.,
+                                             Vector3::z() * (PI / 4.)));
+    let cam_transform = Isometry3::new(Vector3::zero(), Vector3::z() * PI);
+    let cam = Orthographic::new((width, height), (100., 100.), cam_transform);
+    let scene = Scene::new(Rgb { data: [90, 90, 90] }, vec!(f), cam);
+    let render = scene.render();
     render.save(output_path).expect("Cannot save output image");
 }

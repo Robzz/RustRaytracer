@@ -29,8 +29,8 @@ impl Camera for Orthographic {
             let right = self.transform * Vector3::x();
             let up = self.transform * Vector3::y();
             let forward = self.transform * Vector3::z();
-            let cam_x = -pw / 2. + (x as f64) / (vw as f64);
-            let cam_y = -ph / 2. + (y as f64) / (vh as f64);
+            let cam_x = (-0.5 + (x as f64) / ((vw - 1) as f64)) * pw;
+            let cam_y = (-0.5 + (y as f64) / ((vh - 1) as f64)) * ph;
             Some(Ray::new((self.transform.translation + cam_x * right + cam_y * up).to_point(),
                            forward.normalize()))
         }
@@ -41,7 +41,6 @@ impl Camera for Orthographic {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::f64::consts::PI;
     use num_traits::Zero;
 
     #[test]
@@ -60,6 +59,17 @@ mod tests {
         assert!(ray_opt.is_some());
         let ray = ray_opt.unwrap();
         assert!(ray.origin.approx_eq(&Point3::new(-50., -50., 0.)));
+        assert!(ray.direction.approx_eq(&Vector3::z()));
+    }
+
+    #[test]
+    fn test_pixel_ray_top_right() {
+        let transform = Isometry3::new(Vector3::new(0., 0., 0.), Vector3::zero());
+        let cam = Orthographic::new((800, 600), (100., 100.), transform);
+        let ray_opt = cam.pixel_ray((799, 599));
+        assert!(ray_opt.is_some());
+        let ray = ray_opt.unwrap();
+        assert!(ray.origin.approx_eq(&Point3::new(50., 50., 0.)));
         assert!(ray.direction.approx_eq(&Vector3::z()));
     }
 }
