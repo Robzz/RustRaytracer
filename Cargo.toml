@@ -5,7 +5,7 @@ authors = ["R.Chavignat <r.chavignat@gmail.com>"]
 
 [dependencies]
 docopt = "0.6.86"
-docopt_macros = "0.6.87"
+docopt_macros = "0.6.88"
 image = "0.10.4"
 nalgebra = "0.10.1"
 num-traits = "0.1.36"
