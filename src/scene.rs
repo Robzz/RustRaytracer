@@ -40,15 +40,22 @@ impl<C: Camera> Scene<C> {
     pub fn render(&self) -> RgbImage {
         let (width, height) = self.camera.viewport();
         let mut img = RgbImage::new(width, height);
+
         for (x, y, pixel) in img.enumerate_pixels_mut() {
             *pixel = rgb_to_u8(&rgb_01_to_255(&self.bg));
+
             let ray = self.camera.pixel_ray((x, y)).unwrap();
+            use std::f64::MAX;
+            let mut min_distance = MAX;
+            let mut color = self.bg;
             for face in &self.faces {
                 if let Some(inter) = face.intersects(&ray) {
-                    let pixel_color = rgb_01_to_255(&face.material.shade(&inter, self));
-                    *pixel = rgb_to_u8(&pixel_color);
-                    break;
+                    if inter.distance < min_distance {
+                        min_distance = inter.distance;
+                        color = face.material.shade(&inter, self);
+                    }
                 }
+                *pixel = rgb_to_u8(&rgb_01_to_255(&color));
             }
         }
         img

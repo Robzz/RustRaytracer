@@ -42,13 +42,17 @@ fn main() {
     let output = args.arg_output;
 
     let output_path = Path::new(&output);
-    let material = Simple::new(Rgb { data: [1.0, 0.0, 0.0] });
-    let f = Face::new(50., 20., Isometry3::new(Vector3::z() * 50.,
-                                               Vector3::z() * (PI / 4.)),
-                      material);
+    let material_red = Simple::new(Rgb { data: [1.0, 0.0, 0.0] });
+    let material_blue = Simple::new(Rgb { data: [0.0, 0.0, 1.0] });
+    let f1 = Face::new(50., 20., Isometry3::new(Vector3::z() * 50.,
+                                                Vector3::z() * (PI / 4.)),
+                      material_red);
+    let f2 = Face::new(50., 20., Isometry3::new(Vector3::z() * 30.,
+                                                Vector3::z() * -(PI / 4.)),
+                      material_blue);
     let cam_transform = Isometry3::new(Vector3::zero(), Vector3::z() * PI);
     let cam = Orthographic::new((width, height), (100., 100.), cam_transform);
-    let scene = Scene::new(Rgb { data: [0.3, 0.3, 0.3] }, vec!(f), cam);
+    let scene = Scene::new(Rgb { data: [0.3, 0.3, 0.3] }, vec!(f1, f2), cam);
     let render = scene.render();
     render.save(output_path).expect("Cannot save output image");
 }
