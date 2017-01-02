@@ -45,6 +45,7 @@ impl<C: Camera> Scene<C> {
             *pixel = rgb_to_u8(&rgb_01_to_255(&self.bg));
 
             let ray = self.camera.pixel_ray((x, y)).unwrap();
+            println!("{:?}", ray);
             use std::f64::MAX;
             let mut min_distance = MAX;
             let mut color = self.bg;
@@ -55,8 +56,8 @@ impl<C: Camera> Scene<C> {
                         color = face.material.shade(&inter, self);
                     }
                 }
-                *pixel = rgb_to_u8(&rgb_01_to_255(&color));
             }
+            *pixel = rgb_to_u8(&rgb_01_to_255(&color));
         }
         img
     }

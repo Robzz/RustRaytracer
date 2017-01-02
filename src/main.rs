@@ -23,8 +23,8 @@ use scene::Scene;
 use face::Face;
 use nalgebra::*;
 use std::f64::consts::PI;
-use camera::Orthographic;
-use num_traits::Zero;
+use camera::Perspective;
+use num_traits::{Zero, Float};
 use material::Simple;
 
 docopt!(Args, "
@@ -51,7 +51,7 @@ fn main() {
                                                 Vector3::z() * -(PI / 4.)),
                       material_blue);
     let cam_transform = Isometry3::new(Vector3::zero(), Vector3::z() * PI);
-    let cam = Orthographic::new((width, height), (100., 100.), cam_transform);
+    let cam = Perspective::new((width, height), ((110.).to_radians(), (70.).to_radians()), cam_transform);
     let scene = Scene::new(Rgb { data: [0.3, 0.3, 0.3] }, vec!(f1, f2), cam);
     let render = scene.render();
     render.save(output_path).expect("Cannot save output image");
