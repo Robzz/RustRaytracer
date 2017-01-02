@@ -1,4 +1,4 @@
-#![feature(plugin)]
+#![feature(plugin, relaxed_adts)]
 #![plugin(docopt_macros)]
 #![allow(dead_code)]
 
@@ -15,6 +15,9 @@ mod camera;
 mod intersection;
 mod material;
 mod objects;
+mod conversions;
+mod light;
+mod algrebra;
 
 use image::Rgb;
 use std::path::Path;
@@ -51,7 +54,6 @@ fn main() {
     let f2 = Face::new(50., 20.,
                        Isometry3::new(Vector3::z() * -45., Vector3::z() * -(PI / 4.)),
                        Box::new(material_blue));
-    // FIXME: box y coordinate is inverted ?
     let b = Box3D::new(Vector3::one() * 5.,
                        Isometry3::new(Vector3::new(5., 5., -15.), Vector3::zero()),
                        Box::new(material_green));
