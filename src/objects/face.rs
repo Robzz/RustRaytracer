@@ -2,9 +2,9 @@ use nalgebra::*;
 use surface::Surface;
 use intersection::Intersection;
 use ray::Ray;
-use material::Simple;
+use material::Material;
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug)]
 /// Represent a rectangular face.
 /// The default face (i.e. with the identity transform) is considered to be
 /// aligned on the XY plane, facing the Z direction (i.e. normal has positive Z),
@@ -13,11 +13,11 @@ pub struct Face {
     pub width: f64,
     pub height: f64,
     pub transform: Isometry3<f64>,
-    pub material: Simple
+    pub material: Box<Material>
 }
 
 impl Face {
-    pub fn new(width: f64, height: f64, transform: Isometry3<f64>, material: Simple) -> Face {
+    pub fn new(width: f64, height: f64, transform: Isometry3<f64>, material: Box<Material>) -> Face {
         Face { width: width, height: height, transform: transform, material: material }
     }
 
@@ -27,8 +27,8 @@ impl Face {
 }
 
 impl Surface for Face {
-    fn faces(&self) -> Vec<Face> {
-        vec![self.clone()]
+    fn faces<'a>(&'a self) -> Vec<&'a Face> {
+        vec![self]
     }
 
     fn intersects(&self, ray: &Ray) -> Option<Intersection> {
@@ -57,6 +57,10 @@ impl Surface for Face {
             }
         }
     }
+
+    fn material<'a>(&'a self) -> &'a Box<Material> {
+        &self.material
+    }
 }
 
 #[cfg(test)]
@@ -64,10 +68,11 @@ mod tests {
     use super::*;
     use std::f64::consts::PI;
     use num_traits::identities::One;
+    use material::Simple;
     use image::Rgb;
 
     fn test_face() -> Face {
-        Face::new(3., 1., Isometry3::one(), Simple::new(Rgb { data: [1., 0., 0.] }))
+        Face::new(3., 1., Isometry3::one(), Box::new(Simple::new(Rgb { data: [1., 0., 0.] })))
     }
 
     #[test]
@@ -76,7 +81,7 @@ mod tests {
         let h = 1.;
         let m = Isometry3::one();
         let mat = Simple::new(Rgb { data: [0., 0., 0.] });
-        let f = Face::new(w, h, m, mat);
+        let f = Face::new(w, h, m, Box::new(mat));
         assert!(f.width == w);
         assert!(f.height == h);
         assert!(f.transform == m);
@@ -85,9 +90,8 @@ mod tests {
     #[test]
     fn test_surface_impl() {
         let f = test_face();
-        let mut v = f.faces();
+        let v = f.faces();
         assert!(v.len() == 1);
-         assert!(v.pop() == Some(f));
     }
 
     #[test]
@@ -109,7 +113,7 @@ mod tests {
     fn test_surface_intersects() {
         let f = Face::new(3., 3., Isometry3::from_rotation_matrix(Vector3::new(0., 0., -5.),
                                                                   Rotation3::one()),
-                          Simple::new(Rgb { data: [0., 0., 0.] }));
+                          Box::new(Simple::new(Rgb { data: [0., 0., 0.] })));
         let i_opt = f.intersects(&Ray::new(Point3::new(0., 0., 0.), -Vector3::z()));
         assert!(i_opt.is_some());
         let i = i_opt.unwrap();
@@ -121,7 +125,7 @@ mod tests {
     fn test_surface_no_intersects() {
         let f = Face::new(3., 3., Isometry3::from_rotation_matrix(Vector3::new(2., 0., -5.),
                                                                   Rotation3::one()),
-                          Simple::new(Rgb { data: [0., 0., 0.] }));
+                          Box::new(Simple::new(Rgb { data: [0., 0., 0.] })));
         let i_opt = f.intersects(&Ray::new(Point3::new(0., 0., 0.), -Vector3::z()));
         assert!(i_opt.is_none());
     }
@@ -130,7 +134,7 @@ mod tests {
     fn test_surface_no_intersects_behind() {
         let f = Face::new(3., 3., Isometry3::from_rotation_matrix(Vector3::new(0., 0., 5.),
                                                                   Rotation3::one()),
-                          Simple::new(Rgb { data: [0., 0., 0.] }));
+                          Box::new(Simple::new(Rgb { data: [0., 0., 0.] })));
         assert!(f.intersects(&Ray::new(Point3::new(0., 0., 0.), -Vector3::z())).is_none());
     }
 }

@@ -1,7 +1,6 @@
 use intersection::Intersection;
 use scene::Scene;
 use image::Rgb;
-use camera::Camera;
 use material::Material;
 
 #[derive(Debug, Clone, PartialEq)]
@@ -16,7 +15,11 @@ impl Simple {
 }
 
 impl Material for Simple {
-    fn shade<'a, C: Camera>(&self, _: &'a Intersection<'a>, _: &Scene<C>) -> Rgb<f64> {
+    fn shade<'a>(&self, _: &'a Intersection<'a>, _: &Scene) -> Rgb<f64> {
         self.color
+    }
+
+    fn box_clone(&self) -> Box<Material> {
+        Box::new(self.clone())
     }
 }

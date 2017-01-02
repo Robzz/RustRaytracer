@@ -1,14 +1,12 @@
 use image::{Rgb, RgbImage, Primitive};
-use face::Face;
 use camera::Camera;
 use surface::Surface;
-use material::Material;
 
 #[derive(Debug)]
-pub struct Scene<C: Camera> {
+pub struct Scene<'a> {
     bg: Rgb<f64>,
-    faces: Vec<Face>,
-    camera: C
+    faces: Vec<&'a Surface>,
+    camera: Box<Camera>
 }
 
 fn rgb_01_to_255(pixel: &Rgb<f64>) -> Rgb<f64> {
@@ -24,8 +22,8 @@ fn rgb_to_f64<T>(pixel: &Rgb<T>) -> Rgb<f64>
     Rgb { data: [pixel[0].into() , pixel[1].into(), pixel[2].into()] }
 }
 
-impl<C: Camera> Scene<C> {
-    pub fn new(background: Rgb<f64>, faces: Vec<Face>, camera: C) -> Scene<C> {
+impl<'a> Scene<'a> {
+    pub fn new(background: Rgb<f64>, faces: Vec<&'a Surface>, camera: Box<Camera>) -> Scene<'a> {
         Scene { bg: background, faces: faces, camera: camera }
     }
 
@@ -45,7 +43,6 @@ impl<C: Camera> Scene<C> {
             *pixel = rgb_to_u8(&rgb_01_to_255(&self.bg));
 
             let ray = self.camera.pixel_ray((x, y)).unwrap();
-            println!("{:?}", ray);
             use std::f64::MAX;
             let mut min_distance = MAX;
             let mut color = self.bg;
@@ -53,7 +50,7 @@ impl<C: Camera> Scene<C> {
                 if let Some(inter) = face.intersects(&ray) {
                     if inter.distance < min_distance {
                         min_distance = inter.distance;
-                        color = face.material.shade(&inter, self);
+                        color = face.material().shade(&inter, self);
                     }
                 }
             }
@@ -76,7 +73,7 @@ mod tests {
         let c = Rgb { data: [0.3, 0.3, 0.3] };
         let transform = Isometry3::new(Vector3::zero(), Vector3::zero());
         let cam = Orthographic::new((800, 600), (100., 100.), transform);
-        let scene = Scene::new(c, vec!(), cam);
+        let scene = Scene::new(c, vec!(), Box::new(cam));
         assert!(scene.background() == c);
     }
 
@@ -85,10 +82,10 @@ mod tests {
         let c = Rgb { data: [0.3, 0.3, 0.3] };
         let transform = Isometry3::new(Vector3::zero(), Vector3::zero());
         let cam = Orthographic::new((800, 600), (100., 100.), transform);
-        let scene = Scene::new(c, vec!(), cam);
+        let scene = Scene::new(c, vec!(), Box::new(cam));
         let rendered_img = scene.render();
         for pixel in rendered_img.pixels() {
-            assert!(*pixel == rgb_to_u8(&c));
+            assert!(*pixel == rgb_to_u8(&rgb_01_to_255(&c)));
         }
     }
 }

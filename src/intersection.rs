@@ -17,7 +17,7 @@ impl<'a> Intersection<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use face::Face;
+    use objects::Face;
     use num_traits::One;
     use material::Simple;
     use image::Rgb;
@@ -26,7 +26,7 @@ mod tests {
     fn test_new_intersection() {
         let pos = Point3::new(0., 0., 0.);
         let d = 5.;
-        let f = Face::new(1., 1., Isometry3::one(), Simple::new(Rgb { data: [0., 0., 0.] }));
+        let f = Face::new(1., 1., Isometry3::one(), Box::new(Simple::new(Rgb { data: [0., 0., 0.] })));
         let i = Intersection::new(pos, d, &f);
         assert!(i.position == pos);
         assert!(i.distance == d);
