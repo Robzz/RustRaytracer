@@ -1,17 +1,23 @@
 use nalgebra::*;
-use surface::Surface;
+use objects::*;
+use std::boxed::Box as StdBox;
 
-#[derive(Debug, Clone)]
-pub struct Intersection<'a> {
+#[derive(Clone)]
+pub struct Intersection {
     pub position: Point3<f64>,
     pub distance: f64,
-    pub surface: &'a (Surface + 'a)
+    pub object: Object
 }
 
-impl<'a> Intersection<'a> {
-    pub fn new(position: Point3<f64>, distance: f64, surface: &'a Surface) -> Intersection<'a> {
-        Intersection { position: position, distance: distance, surface: surface }
+impl Intersection {
+    pub fn new(position: Point3<f64>, distance: f64, object: Object) -> Intersection {
+        Intersection { position: position, distance: distance, object: object }
     }
+}
+
+pub fn closest_intersection(intersections: Vec<Intersection>) -> Option<Intersection> {
+    let inter_opt = intersections.iter().min_by(|i1, i2| i1.distance.partial_cmp(&i2.distance).unwrap());
+    inter_opt.cloned()
 }
 
 #[cfg(test)]
@@ -26,10 +32,10 @@ mod tests {
     fn test_new_intersection() {
         let pos = Point3::new(0., 0., 0.);
         let d = 5.;
-        let f = Face::new(1., 1., Isometry3::one(), Box::new(Simple::new(Rgb { data: [0., 0., 0.] })));
-        let i = Intersection::new(pos, d, &f);
+        let f = Face::new(1., 1., Isometry3::one(), StdBox::new(Simple::new(Rgb { data: [0., 0., 0.] })));
+        let obj = Object::from_surface(StdBox::new(f));
+        let i = Intersection::new(pos, d, obj);
         assert!(i.position == pos);
         assert!(i.distance == d);
     }
 }
-

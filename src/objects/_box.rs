@@ -1,12 +1,15 @@
 use objects::Face;
-use surface::Surface;
 use material::Material;
 use nalgebra::*;
 use std::boxed::Box as StdBox;
 use num_traits::{One, Zero};
 use std::f64::consts::PI;
+use objects::*;
+use intersection::*;
+use ray::Ray;
+use std::cmp::PartialOrd;
+use util::filter_nones;
 
-#[derive(Debug)]
 pub struct Box {
     top: Face,
     bottom: Face,
@@ -51,15 +54,35 @@ impl Box {
     }
 }
 
-impl Surface for Box {
-    fn faces<'a>(&'a self) -> Vec<&'a Face> {
-        vec!(&self.top, &self.bottom,
-             &self.left, &self.right, &self.front, &self.back
-             )
+impl Clone for Box {
+    fn clone(&self) -> Box {
+        Box { top: self.top.clone(), bottom: self.bottom.clone(),
+              left: self.left.clone(), right: self.right.clone(),
+              front: self.front.clone(), back: self.back.clone(),
+              transform: self.transform, size: self.size,
+              material: self.material.box_clone() }
     }
+}
 
+impl Surface for Box {
     fn material<'a>(&'a self) -> &'a StdBox<Material> {
         &self.material
+    }
+
+    fn box_clone(&self) -> StdBox<Surface> {
+        StdBox::new(self.clone())
+    }
+}
+
+impl Intersectable for Box {
+    fn intersects(&self, ray: &Ray) -> Option<Intersection> {
+        let intersections = vec!(self.top.intersects(ray),
+                                 self.bottom.intersects(ray),
+                                 self.left.intersects(ray),
+                                 self.right.intersects(ray),
+                                 self.front.intersects(ray),
+                                 self.back.intersects(ray));
+        closest_intersection(filter_nones(intersections))
     }
 }
 
@@ -95,7 +118,6 @@ mod tests {
         let inter_opt = b.intersects(&ray);
         assert!(inter_opt.is_some());
         if let Some(i) = inter_opt {
-            println!("{:?}", i);
             assert!(i.distance.approx_eq(&4.5));
             assert!(i.position.approx_eq(&Point3::new(5., 5., 4.5)));
         }

@@ -1,7 +1,6 @@
 use intersection::Intersection;
 use image::Rgb;
 use material::Material;
-use light::Light;
 use scene::Scene;
 
 #[derive(Debug, Clone, PartialEq)]
@@ -16,7 +15,7 @@ impl Simple {
 }
 
 impl Material for Simple {
-    fn shade<'a>(&self, _: &'a Intersection<'a>, _: &Scene) -> Rgb<f64> {
+    fn shade(&self, _: &Intersection, _: &Scene) -> Rgb<f64> {
         self.color
     }
 

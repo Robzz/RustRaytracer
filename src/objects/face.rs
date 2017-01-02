@@ -1,8 +1,9 @@
 use nalgebra::*;
-use surface::Surface;
 use intersection::Intersection;
 use ray::Ray;
 use material::Material;
+use objects::*;
+use std::boxed::Box as StdBox;
 
 #[derive(Debug)]
 /// Represent a rectangular face.
@@ -13,11 +14,11 @@ pub struct Face {
     pub width: f64,
     pub height: f64,
     pub transform: Isometry3<f64>,
-    pub material: Box<Material>
+    pub material: StdBox<Material>
 }
 
 impl Face {
-    pub fn new(width: f64, height: f64, transform: Isometry3<f64>, material: Box<Material>) -> Face {
+    pub fn new(width: f64, height: f64, transform: Isometry3<f64>, material: StdBox<Material>) -> Face {
         Face { width: width, height: height, transform: transform, material: material }
     }
 
@@ -26,40 +27,31 @@ impl Face {
     }
 }
 
-impl Surface for Face {
-    fn faces<'a>(&'a self) -> Vec<&'a Face> {
-        vec![self]
+impl Clone for Face {
+    fn clone(&self) -> Face {
+        Face { width: self.width, height: self.height, transform: self.transform,
+               material: self.material.box_clone() }
     }
+}
 
+impl Intersectable for Face {
     fn intersects(&self, ray: &Ray) -> Option<Intersection> {
-        let p = self.transform.transform(&Point3::new(0., 0., 0.));
-        let n = self.normal();
-        let d = dot(&ray.direction, &n);
-        match d.approx_eq(&0.) {
-            true => None,
-            false => {
-                // Ray is not parallel to plane
-                // Find if the intersection is in the positive direction
-                let t = dot(&(p - ray.origin), &n) / d;
-                match t < 0. {
-                    true => None,
-                    false => {
-                        // Find the intersection point on the face's plane and
-                        // make sure it's within the face
-                        let i_world = ray.origin + t * ray.direction;
-                        let i_local = self.transform.inverse().unwrap().transform(&i_world);
-                        match (abs(&i_local.x) <= (self.width / 2.)) && (abs(&i_local.y) <= (self.height / 2.)) {
-                            true => Some(Intersection::new(i_world, norm(&(i_world - ray.origin)), self as &Surface)),
-                            false => None
-                        }
-                    }
-                }
+        match ray.intersects_face(self) {
+            Some((p, d)) => {
+                Some(Intersection::new(p, d, self.as_object()))
             }
+            None => None
         }
     }
+}
 
-    fn material<'a>(&'a self) -> &'a Box<Material> {
+impl Surface for Face {
+    fn material(&self) -> &StdBox<Material> {
         &self.material
+    }
+
+    fn box_clone(&self) -> StdBox<Surface> {
+        StdBox::new(self.clone())
     }
 }
 
@@ -72,7 +64,7 @@ mod tests {
     use image::Rgb;
 
     fn test_face() -> Face {
-        Face::new(3., 1., Isometry3::one(), Box::new(Simple::new(Rgb { data: [1., 0., 0.] })))
+        Face::new(3., 1., Isometry3::one(), StdBox::new(Simple::new(Rgb { data: [1., 0., 0.] })))
     }
 
     #[test]
@@ -81,17 +73,10 @@ mod tests {
         let h = 1.;
         let m = Isometry3::one();
         let mat = Simple::new(Rgb { data: [0., 0., 0.] });
-        let f = Face::new(w, h, m, Box::new(mat));
+        let f = Face::new(w, h, m, StdBox::new(mat));
         assert!(f.width == w);
         assert!(f.height == h);
         assert!(f.transform == m);
-    }
-
-    #[test]
-    fn test_surface_impl() {
-        let f = test_face();
-        let v = f.faces();
-        assert!(v.len() == 1);
     }
 
     #[test]
@@ -113,7 +98,7 @@ mod tests {
     fn test_surface_intersects() {
         let f = Face::new(3., 3., Isometry3::from_rotation_matrix(Vector3::new(0., 0., -5.),
                                                                   Rotation3::one()),
-                          Box::new(Simple::new(Rgb { data: [0., 0., 0.] })));
+                          StdBox::new(Simple::new(Rgb { data: [0., 0., 0.] })));
         let i_opt = f.intersects(&Ray::new(Point3::new(0., 0., 0.), -Vector3::z()));
         assert!(i_opt.is_some());
         let i = i_opt.unwrap();
@@ -125,7 +110,7 @@ mod tests {
     fn test_surface_no_intersects() {
         let f = Face::new(3., 3., Isometry3::from_rotation_matrix(Vector3::new(2., 0., -5.),
                                                                   Rotation3::one()),
-                          Box::new(Simple::new(Rgb { data: [0., 0., 0.] })));
+                          StdBox::new(Simple::new(Rgb { data: [0., 0., 0.] })));
         let i_opt = f.intersects(&Ray::new(Point3::new(0., 0., 0.), -Vector3::z()));
         assert!(i_opt.is_none());
     }
@@ -134,7 +119,7 @@ mod tests {
     fn test_surface_no_intersects_behind() {
         let f = Face::new(3., 3., Isometry3::from_rotation_matrix(Vector3::new(0., 0., 5.),
                                                                   Rotation3::one()),
-                          Box::new(Simple::new(Rgb { data: [0., 0., 0.] })));
+                          StdBox::new(Simple::new(Rgb { data: [0., 0., 0.] })));
         assert!(f.intersects(&Ray::new(Point3::new(0., 0., 0.), -Vector3::z())).is_none());
     }
 }

@@ -19,7 +19,7 @@ impl LightMaterial {
 }
 
 impl Material for LightMaterial {
-    fn shade<'a>(&self, _: &'a Intersection<'a>, _: &Scene) -> Rgb<f64> {
+    fn shade(&self, _: &Intersection, _: &Scene) -> Rgb<f64> {
         self.color
     }
 
