@@ -42,7 +42,7 @@ impl<'a> Scene<'a> {
         for (x, y, pixel) in img.enumerate_pixels_mut() {
             *pixel = rgb_to_u8(&rgb_01_to_255(&self.bg));
 
-            let ray = self.camera.pixel_ray((x, y)).unwrap();
+            let ray = self.camera.pixel_ray((x, (height - 1 - y))).unwrap();
             use std::f64::MAX;
             let mut min_distance = MAX;
             let mut color = self.bg;

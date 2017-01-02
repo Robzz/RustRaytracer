@@ -56,8 +56,13 @@ fn main() {
                        Isometry3::new(Vector3::new(5., 5., -15.), Vector3::zero()),
                        Box::new(material_green));
     let cam_transform = Isometry3::one();
-    let cam = Perspective::new((width, height), ((110.).to_radians(), (70.).to_radians()), cam_transform);
-    let scene = Scene::new(Rgb { data: [0.3, 0.3, 0.3] }, vec!(&f1, &f2, &b), Box::new(cam));
+    let cam = Perspective::new((width, height),
+                               ((110.).to_radians(), (70.).to_radians()),
+                               cam_transform);
+    let scene = Scene::new(Rgb { data: [0.3, 0.3, 0.3] },
+                           vec!(&f1, &f2, &b),
+                           Box::new(cam));
+
     let render = scene.render();
     render.save(output_path).expect("Cannot save output image");
 }
