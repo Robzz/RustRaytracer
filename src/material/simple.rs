@@ -1,7 +1,8 @@
 use intersection::Intersection;
-use scene::Scene;
 use image::Rgb;
 use material::Material;
+use light::Light;
+use scene::Scene;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Simple {

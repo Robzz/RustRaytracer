@@ -1,11 +1,13 @@
 use image::{Rgb, RgbImage, Primitive};
 use camera::Camera;
 use surface::Surface;
+use light::Light;
 
 #[derive(Debug)]
 pub struct Scene<'a> {
     bg: Rgb<f64>,
     faces: Vec<&'a Surface>,
+    lights: Vec<&'a Light>,
     camera: Box<Camera>
 }
 
@@ -23,8 +25,9 @@ fn rgb_to_f64<T>(pixel: &Rgb<T>) -> Rgb<f64>
 }
 
 impl<'a> Scene<'a> {
-    pub fn new(background: Rgb<f64>, faces: Vec<&'a Surface>, camera: Box<Camera>) -> Scene<'a> {
-        Scene { bg: background, faces: faces, camera: camera }
+    pub fn new(background: Rgb<f64>, faces: Vec<&'a Surface>, lights: Vec<&'a Light>,
+               camera: Box<Camera>) -> Scene<'a> {
+        Scene { bg: background, faces: faces, lights: lights, camera: camera }
     }
 
     pub fn background(&self) -> Rgb<f64> {
@@ -33,6 +36,10 @@ impl<'a> Scene<'a> {
 
     pub fn set_background(&mut self, background: Rgb<f64>) {
         self.bg = background;
+    }
+
+    pub fn lights(&self) -> Vec<&'a Light> {
+        self.lights.clone()
     }
 
     pub fn render(&self) -> RgbImage {
@@ -45,20 +52,39 @@ impl<'a> Scene<'a> {
             let ray = self.camera.pixel_ray((x, (height - 1 - y))).unwrap();
             use std::f64::MAX;
             let mut min_distance = MAX;
-            let mut color = self.bg;
+            let mut closest_intersection = None;
+            let mut closest_is_light = false;
+
+            // Find closest intersection
             for face in &self.faces {
-                if let Some(inter) = face.intersects(&ray) {
+                let intersect_opt = face.intersects(&ray);
+                if let Some(inter) = intersect_opt.clone() {
                     if inter.distance < min_distance {
                         min_distance = inter.distance;
-                        color = face.material().shade(&inter, self);
+                        closest_intersection = intersect_opt.clone();
                     }
                 }
             }
-            *pixel = rgb_to_u8(&rgb_01_to_255(&color));
+            for light in &self.lights {
+                let intersect_opt = light.intersects(&ray);
+                if let Some(inter) = intersect_opt.clone() {
+                    if inter.distance < min_distance {
+                        min_distance = inter.distance;
+                        closest_intersection = intersect_opt.clone();
+                        closest_is_light = true;
+                    }
+                }
+            }
+
+            if let Some(intersect) = closest_intersection {
+                *pixel = rgb_to_u8(&rgb_01_to_255(&intersect.surface.material().shade(&intersect, self)));
+            }
+            else {
+                *pixel = rgb_to_u8(&rgb_01_to_255(&self.bg));
+            }
         }
         img
     }
-
 }
 
 #[cfg(test)]
@@ -73,7 +99,7 @@ mod tests {
         let c = Rgb { data: [0.3, 0.3, 0.3] };
         let transform = Isometry3::new(Vector3::zero(), Vector3::zero());
         let cam = Orthographic::new((800, 600), (100., 100.), transform);
-        let scene = Scene::new(c, vec!(), Box::new(cam));
+        let scene = Scene::new(c, vec!(), vec!(), Box::new(cam));
         assert!(scene.background() == c);
     }
 
@@ -82,7 +108,7 @@ mod tests {
         let c = Rgb { data: [0.3, 0.3, 0.3] };
         let transform = Isometry3::new(Vector3::zero(), Vector3::zero());
         let cam = Orthographic::new((800, 600), (100., 100.), transform);
-        let scene = Scene::new(c, vec!(), Box::new(cam));
+        let scene = Scene::new(c, vec!(), vec!(), Box::new(cam));
         let rendered_img = scene.render();
         for pixel in rendered_img.pixels() {
             assert!(*pixel == rgb_to_u8(&rgb_01_to_255(&c)));

@@ -28,7 +28,8 @@ use nalgebra::*;
 use std::f64::consts::PI;
 use camera::Perspective;
 use num_traits::{Zero, One, Float};
-use material::Simple;
+use material::{Phong, LightMaterial};
+use light::Light;
 
 docopt!(Args, "
 Usage: raytrace <output> <width> <height>
@@ -45,24 +46,28 @@ fn main() {
     let output = args.arg_output;
     let output_path = Path::new(&output);
 
-    let material_red = Simple::new(Rgb { data: [1.0, 0.0, 0.0] });
-    let material_blue = Simple::new(Rgb { data: [0.0, 0.0, 1.0] });
-    let material_green = Simple::new(Rgb { data: [0.0, 1.0, 0.0] });
-    let f1 = Face::new(50., 20.,
-                       Isometry3::new(Vector3::z() * -50., Vector3::z() * (PI / 4.)),
-                       Box::new(material_red));
-    let f2 = Face::new(50., 20.,
-                       Isometry3::new(Vector3::z() * -45., Vector3::z() * -(PI / 4.)),
-                       Box::new(material_blue));
-    let b = Box3D::new(Vector3::one() * 5.,
-                       Isometry3::new(Vector3::new(5., 5., -15.), Vector3::zero()),
-                       Box::new(material_green));
+    let ambient = Rgb { data: [0.1, 0.1, 0.1] };
+    let specular = Rgb { data: [0., 0., 0.] };
+    let material_grey   = Phong::new(ambient, Rgb { data: [0.6, 0.6, 0.6] }, specular, 0.);
+    let material_light  = LightMaterial::new(Rgb { data: [1.0, 1.0, 1.0] });
+    let wall_left = Face::new(5., 5.,
+                              Isometry3::new(Vector3::new(-2., 0., -2.), Vector3::y() * (PI / 2.)),
+                              Box::new(material_grey.clone()));
+    let wall_right = Face::new(5., 5.,
+                               Isometry3::new(Vector3::new(2., 0., -2.), Vector3::y() * (PI / 2.)),
+                               Box::new(material_grey.clone()));
+    let light = Light::new(Face::new(0.5, 0.5,
+                                     Isometry3::new(Vector3::new(0., 1., -2.), Vector3::x() * (PI / 2.)),
+                                     material_light.to_material()),
+                           material_light.clone());
+
     let cam_transform = Isometry3::one();
     let cam = Perspective::new((width, height),
                                ((110.).to_radians(), (70.).to_radians()),
                                cam_transform);
     let scene = Scene::new(Rgb { data: [0.3, 0.3, 0.3] },
-                           vec!(&f1, &f2, &b),
+                           vec!(&wall_left, &wall_right),
+                           vec!(&light),
                            Box::new(cam));
 
     let render = scene.render();

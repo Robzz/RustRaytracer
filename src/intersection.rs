@@ -1,7 +1,7 @@
 use nalgebra::*;
 use surface::Surface;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Intersection<'a> {
     pub position: Point3<f64>,
     pub distance: f64,
