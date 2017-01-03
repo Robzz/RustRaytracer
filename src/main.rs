@@ -15,7 +15,6 @@ mod camera;
 mod intersection;
 mod material;
 mod objects;
-mod conversions;
 mod light;
 mod algebra;
 mod util;
@@ -35,17 +34,8 @@ use std::boxed::Box as StdBox;
 use util::*;
 
 docopt!(Args, "
-Usage: raytrace <output> <width> <height>
-
-Options:
-    -a, --archive  Copy everything.
-",
-arg_width: u32, arg_height: u32);
-
-const N: u32 = 10;
-const N2: u32 = N*N;
-
-const N_BOUNCES : u32 = 6;
+Usage: raytrace <output> <width> <height> <N> <B>",
+arg_width: u32, arg_height: u32, arg_N: u32, arg_B: u32);
 
 fn print_progress(progress: f64) {
     println!("\x1B[1A\x1B[2K{}%", progress * 100.);
@@ -98,7 +88,7 @@ fn reflection_ray(scene: &Scene, ray: &Ray, bounces: u32) -> Rgb<f64> {
     pixel
 }
 
-fn ray_energy(scene: &Scene, ray: &Ray) -> Rgb<f64> {
+fn ray_energy(scene: &Scene, ray: &Ray, bounces: u32) -> Rgb<f64> {
     // Find closest intersection
     let intersect_opt = scene.intersects(&ray);
     let mut pixel = Rgb { data: [0., 0., 0.] };
@@ -129,7 +119,7 @@ fn ray_energy(scene: &Scene, ray: &Ray) -> Rgb<f64> {
                                 let dln = l.dot(&surface_normal);
                                 let r = 2. * dln * surface_normal - l;
                                 let refl_ray = Ray::new(intersect.position, random_in_cone(r, (30.).to_radians()));
-                                let reflection_color = rgb_div(&reflection_ray(scene, &refl_ray, N_BOUNCES), N_BOUNCES as f64);
+                                let reflection_color = rgb_div(&reflection_ray(scene, &refl_ray, bounces), bounces as f64);
                                 color = rgb_add(&color, &reflection_color);
                                 color = rgb_div(&color, 2.);
 
@@ -157,7 +147,7 @@ fn correct_gamma(p: &Rgb<f64>) -> Rgb<f64> {
     })
 }
 
-fn render(scene: &Scene) -> RgbImage {
+fn render(scene: &Scene, n: u32, bounces: u32) -> RgbImage {
     let (width, height) = scene.camera().viewport();
     let mut img = RgbImage::new(width, height);
     let n_pixels = (width * height) as f64;
@@ -166,7 +156,7 @@ fn render(scene: &Scene) -> RgbImage {
     for (x, y_inverted, pixel) in img.enumerate_pixels_mut() {
         print_progress(i as f64 / n_pixels);
 
-        let step = 1. / (N + 1) as f64;
+        let step = 1. / (n + 1) as f64;
         let y = height - 1 - y_inverted;
         let mut yf = (y as f64) + step / 2.;
         let mut energy = Rgb { data: [0., 0., 0.] };
@@ -174,13 +164,13 @@ fn render(scene: &Scene) -> RgbImage {
             let mut xf = (x as f64) + step / 2.;
             while xf < (x + 1) as f64 {
                 let ray = scene.camera().pixel_ray((xf, yf)).unwrap();
-                let ray_energy = ray_energy(scene, &ray);
+                let ray_energy = ray_energy(scene, &ray, bounces);
                 energy = rgb_add(&energy, &ray_energy);
                 xf += step;
             }
             yf += step;
         }
-        energy = rgb_clamp_0_1(&rgb_div(&energy, N2 as f64));
+        energy = rgb_clamp_0_1(&rgb_div(&energy, (n * n) as f64));
         *pixel = rgb_to_u8(&rgb_01_to_255(&correct_gamma(&energy)));
         //*pixel = rgb_to_u8(&rgb_01_to_255(&energy));
         i += 1;
@@ -252,6 +242,6 @@ fn main() {
                            StdBox::new(cam));
 
     println!("");
-    let render = render(&scene);
+    let render = render(&scene, args.arg_N, args.arg_B);
     render.save(output_path).expect("Cannot save output image");
 }
