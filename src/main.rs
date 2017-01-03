@@ -1,6 +1,5 @@
-#![feature(plugin, relaxed_adts, conservative_impl_trait)]
+#![feature(plugin)]
 #![plugin(docopt_macros)]
-#![allow(dead_code)]
 
 extern crate docopt;
 extern crate image;
@@ -8,30 +7,23 @@ extern crate nalgebra;
 extern crate num_traits;
 extern crate rand;
 extern crate rustc_serialize;
-
-mod ray;
-mod scene;
-mod camera;
-mod intersection;
-mod material;
-mod objects;
-mod light;
-mod algebra;
-mod util;
+extern crate rust_raytracer;
 
 use image::*;
-use std::path::Path;
-use scene::Scene;
-use nalgebra::*;
-use std::f64::consts::PI;
-use camera::Perspective;
 use num_traits::*;
-use material::{Phong, LightMaterial};
-use light::Light;
-use ray::Ray;
-use objects::*;
+use nalgebra::*;
+
 use std::boxed::Box as StdBox;
-use util::*;
+use std::f64::consts::PI;
+use std::path::Path;
+
+use rust_raytracer::camera::Perspective;
+use rust_raytracer::light::Light;
+use rust_raytracer::material::{Phong, LightMaterial};
+use rust_raytracer::objects::*;
+use rust_raytracer::ray::Ray;
+use rust_raytracer::scene::Scene;
+use rust_raytracer::util::*;
 
 docopt!(Args, "
 Usage: raytrace <output> <width> <height> <N> <B>",
@@ -115,13 +107,15 @@ fn ray_energy(scene: &Scene, ray: &Ray, bounces: u32) -> Rgb<f64> {
                                 color = rgb_add(&color, &ray_specular_color);
 
                                 // Cast a reflection ray for glossy reflection
-                                let l = light_ray.direction.normalize();
-                                let dln = l.dot(&surface_normal);
-                                let r = 2. * dln * surface_normal - l;
-                                let refl_ray = Ray::new(intersect.position, random_in_cone(r, (30.).to_radians()));
-                                let reflection_color = rgb_div(&reflection_ray(scene, &refl_ray, bounces), bounces as f64);
-                                color = rgb_add(&color, &reflection_color);
-                                color = rgb_div(&color, 2.);
+                                //if bounces != 0 {
+                                    //let l = light_ray.direction.normalize();
+                                    //let dln = l.dot(&surface_normal);
+                                    //let r = 2. * dln * surface_normal - l;
+                                    //let refl_ray = Ray::new(intersect.position, random_in_cone(r, (30.).to_radians()));
+                                    //let reflection_color = rgb_div(&reflection_ray(scene, &refl_ray, bounces), bounces as f64);
+                                    //color = rgb_add(&color, &reflection_color);
+                                    //color = rgb_div(&color, 2.);
+                                //}
 
                                 pixel = color;
                             }
