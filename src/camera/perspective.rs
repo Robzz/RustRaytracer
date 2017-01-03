@@ -21,14 +21,16 @@ impl Camera for Perspective {
     fn viewport(&self) -> (u32, u32) { self.viewport }
     fn set_viewport(&mut self, viewport: (u32, u32)) { self.viewport = viewport; }
 
-    fn pixel_ray(&self, coords: (u32, u32)) -> Option<Ray> {
-        let (x, y) = coords;
-        let (w, h) = self.viewport;
+    fn pixel_ray(&self, coords: (f64, f64)) -> Option<Ray> {
+        let (xu, yu) = coords;
+        let (x, y) = (xu as f64, yu as f64);
+        let (wu, hu) = self.viewport;
+        let (w, h) = (wu as f64, hu as f64);
         match x < w && y < h {
             false => None,
             true => {
                 let (fov_x, fov_y) = self.fov;
-                let (xf, yf) = ((x as f64 / (w - 1) as f64) - 0.5, (y as f64 / (h - 1) as f64) - 0.5);
+                let (xf, yf) = (x / (w - 1.) - 0.5, y / (h - 1.) - 0.5);
                 let (theta_x, theta_y) = (xf * fov_x, yf * fov_y);
                 let direction = self.transform * Vector3::new(theta_x.tan(), theta_y.tan(), -1.).normalize();
                 Some(Ray::new(self.transform.transform(&Point3::new(0., 0., 0.)),
@@ -51,7 +53,7 @@ mod tests {
     #[test]
     fn test_pixel_ray_bottom_left() {
         let cam = Perspective::new((800, 600), ((90.).to_radians(), (90.).to_radians()), Isometry3::one());
-        let ray_opt = cam.pixel_ray((0, 0));
+        let ray_opt = cam.pixel_ray((0., 0.));
         let ray = ray_opt.unwrap();
         println!("{:?}", ray);
         assert!(ray.origin.approx_eq(&Point3::new(0., 0., 0.)));

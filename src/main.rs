@@ -58,7 +58,7 @@ fn render(scene: &Scene) -> RgbImage {
         print_progress((x + y * width) as f64 / n_pixels);
         *pixel = rgb_to_u8(&rgb_01_to_255(&scene.background()));
 
-        let ray = scene.camera().pixel_ray((x, (height - 1 - y))).unwrap();
+        let ray = scene.camera().pixel_ray((x as f64, (height - 1 - y) as f64)).unwrap();
 
         // Find closest intersection
         let intersect_opt = scene.intersects(&ray);
