@@ -2,7 +2,7 @@ use nalgebra::*;
 use camera::Camera;
 use ray::Ray;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct Orthographic {
     pub viewport: (u32, u32),
     pub plane_size: (f64, f64),

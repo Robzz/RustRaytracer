@@ -6,10 +6,10 @@ extern crate docopt;
 extern crate image;
 extern crate nalgebra;
 extern crate num_traits;
+extern crate rand;
 extern crate rustc_serialize;
 
 mod ray;
-mod surface;
 mod scene;
 mod camera;
 mod intersection;
@@ -20,18 +20,19 @@ mod light;
 mod algrebra;
 mod util;
 
-use image::{Rgb, RgbImage, Primitive};
+use image::*;
 use std::path::Path;
 use scene::Scene;
 use nalgebra::*;
 use std::f64::consts::PI;
 use camera::Perspective;
-use num_traits::{Zero, One, Float};
+use num_traits::*;
 use material::{Phong, LightMaterial};
 use light::Light;
 use ray::Ray;
 use objects::*;
 use std::boxed::Box as StdBox;
+use util::*;
 
 docopt!(Args, "
 Usage: raytrace <output> <width> <height>
@@ -41,29 +42,23 @@ Options:
 ",
 arg_width: u32, arg_height: u32);
 
-fn rgb_01_to_255(pixel: &Rgb<f64>) -> Rgb<f64> {
-    Rgb { data: [pixel[0] * 255., pixel[1] * 255., pixel[2] * 255.] }
+const RAYS_PER_PIXEL: u32 = 100;
+
+fn print_progress(progress: f64) {
+    println!("\x1B[1A\x1B[2K{}%", progress * 100.);
 }
 
-fn rgb_to_u8(pixel: &Rgb<f64>) -> Rgb<u8> {
-    Rgb { data: [pixel[0] as u8, pixel[1] as u8, pixel[2] as u8] }
-}
-
-fn rgb_to_f64<T>(pixel: &Rgb<T>) -> Rgb<f64>
-    where T: Primitive + Into<f64> {
-    Rgb { data: [pixel[0].into() , pixel[1].into(), pixel[2].into()] }
-}
-
-pub fn render(scene: &Scene) -> RgbImage {
+fn render(scene: &Scene) -> RgbImage {
     let (width, height) = scene.camera().viewport();
     let mut img = RgbImage::new(width, height);
+    let n_pixels = (width * height) as f64;
 
     for (x, y, pixel) in img.enumerate_pixels_mut() {
+        println!("Doing pixel ({}, {})", x, y);
+        print_progress((x + y * width) as f64 / n_pixels);
         *pixel = rgb_to_u8(&rgb_01_to_255(&scene.background()));
 
         let ray = scene.camera().pixel_ray((x, (height - 1 - y))).unwrap();
-        use std::f64::MAX;
-        let mut min_distance = MAX;
 
         // Find closest intersection
         let intersect_opt = scene.intersects(&ray);
@@ -71,14 +66,35 @@ pub fn render(scene: &Scene) -> RgbImage {
         if let Some(intersect) = intersect_opt {
             match intersect.object {
                 Object::Light(ref l) => {
-                    *pixel = rgb_to_u8(&rgb_01_to_255(&l.material().shade(&intersect, scene)));
+                    // Paint the light with its diffuse color
+                    *pixel = rgb_to_u8(&rgb_01_to_255(&l.light_material().diffuse_intensity));
                 },
                 Object::Surface(ref s) => {
-                    // Cast shadow rays and compute diffuse component
-                    *pixel = rgb_to_u8(&rgb_01_to_255(&s.material().shade(&intersect, scene)));
-                    let diffuse = Rgb { data: [0., 0., 0.] };
+                    // Cast light rays and compute diffuse component
+                    let mut diffuse = Rgb { data: [0., 0., 0.] };
+                    let surface_normal = intersect.face.normal();
                     for light in scene.lights() {
-                        let shadow_ray = Ray::new(intersect.position, *light.transform().translation.as_point() - intersect.position);
+                        let mut i = 0;
+                        loop {
+                            let p = light.random_on_face();
+                            let light_ray = Ray::between(intersect.position, p);
+                            match scene.intersects(&light_ray) {
+                                None => (),
+                                Some(light_inter) => {
+                                    if light_inter.object == Object::from_light(light.clone()) {
+                                        let ray_color = light.shade(surface_normal, &intersect.object, &light_ray, &light_inter);
+                                        diffuse = rgb_add(&diffuse, &ray_color);
+                                    }
+                                }
+                            }
+                            if i == RAYS_PER_PIXEL {
+                                break;
+                            }
+                            i += 1;
+                        }
+                        diffuse = rgb_01_to_255(&rgb_div(&diffuse, RAYS_PER_PIXEL as f64));
+                        let color = rgb_add(&diffuse, &rgb_01_to_255(&s.material().ambient_color()));
+                        *pixel = rgb_to_u8(&color);
                     }
                 }
             }
@@ -99,29 +115,47 @@ fn main() {
 
     let ambient = Rgb { data: [0.1, 0.1, 0.1] };
     let specular = Rgb { data: [0., 0., 0.] };
+    let material_blue   = Phong::new(ambient, Rgb { data: [0.1, 0.2, 0.7] }, specular, 0.);
     let material_grey   = Phong::new(ambient, Rgb { data: [0.6, 0.6, 0.6] }, specular, 0.);
     let material_light  = LightMaterial::new(Rgb { data: [1.0, 1.0, 1.0] });
-    let wall_left = Face::new(5., 5.,
+    let wall_left = Face::new(50., 50.,
                               Isometry3::new(Vector3::new(-2., 0., -2.), Vector3::y() * (PI / 2.)),
                               StdBox::new(material_grey.clone()));
-    let wall_right = Face::new(5., 5.,
-                               Isometry3::new(Vector3::new(2., 0., -2.), Vector3::y() * (PI / 2.)),
+    let wall_right = Face::new(50., 50.,
+                               Isometry3::new(Vector3::new(2., 0., -2.), Vector3::y() * -(PI / 2.)),
                                StdBox::new(material_grey.clone()));
+    let wall_back = Face::new(50., 50.,
+                              Isometry3::new(Vector3::new(0., 0., -5.), Vector3::zero()),
+                              StdBox::new(material_grey.clone()));
+    let ceiling = Face::new(50., 50.,
+                            Isometry3::new(Vector3::new(0., 3., 0.), Vector3::x() * PI / 2.),
+                            StdBox::new(material_grey.clone()));
+    let ground = Face::new(50., 50.,
+                           Isometry3::new(Vector3::new(0., 0., -2.5), Vector3::x() * -(PI / 2.)),
+                           StdBox::new(material_grey.clone()));
+    let box1 = Box::new(Vector3::new(1., 1., 1.),
+                        Isometry3::new(Vector3::new(1., 0.5, -4.), Vector3::zero()),
+                        StdBox::new(material_blue));
     let light = Light::new(Face::new(0.5, 0.5,
-                                     Isometry3::new(Vector3::new(0., 1., -2.), Vector3::x() * (PI / 2.)),
-                                     material_light.to_material()),
+                                     Isometry3::new(Vector3::new(0., 2.99, -3.), Vector3::x() * (PI / 2.)),
+                                     StdBox::new(material_grey.clone())),
                            material_light.clone());
 
-    let cam_transform = Isometry3::one();
+    let cam_transform = Isometry3::new(Vector3::new(0., 1.8, 0.), Vector3::zero());
     let cam = Perspective::new((width, height),
-                               ((110.).to_radians(), (70.).to_radians()),
+                               ((90.).to_radians(), (70.).to_radians()),
                                cam_transform);
     let scene = Scene::new(Rgb { data: [0.3, 0.3, 0.3] },
-                           vec!(Object::from_surface(StdBox::new(wall_left)),
-                                Object::from_surface(StdBox::new(wall_right)),
+                           vec!(Object::from_surface(Surface::from_face(wall_left)),
+                                Object::from_surface(Surface::from_face(wall_right)),
+                                Object::from_surface(Surface::from_face(wall_back)),
+                                Object::from_surface(Surface::from_face(ceiling)),
+                                Object::from_surface(Surface::from_face(ground)),
+                                Object::from_surface(Surface::from_box(box1)),
                                 Object::from_light(light)),
                            StdBox::new(cam));
 
+    println!("");
     let render = render(&scene);
     render.save(output_path).expect("Cannot save output image");
 }

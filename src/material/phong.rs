@@ -1,7 +1,5 @@
 use image::Rgb;
-use intersection::Intersection;
 use material::Material;
-use scene::Scene;
 
 #[derive(Debug, Clone)]
 pub struct Phong {
@@ -18,11 +16,11 @@ impl Phong {
 }
 
 impl Material for Phong {
-    fn shade(&self, intersect: &Intersection, scene: &Scene) -> Rgb<f64> {
-        let lights = scene.lights();
-        for light in lights {
-            // Can the intersection see the light?
-        }
+    fn ambient_color(&self) -> Rgb<f64> {
+        self.ambient
+    }
+
+    fn diffuse_color(&self) -> Rgb<f64> {
         self.diffuse
     }
 

@@ -2,7 +2,7 @@ use camera::Camera;
 use nalgebra::*;
 use ray::Ray;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 /// Clipping plane z as fixed at 1
 /// The default camera faces the -Z axis
 pub struct Perspective {

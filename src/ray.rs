@@ -12,21 +12,25 @@ impl Ray {
         Ray { origin: origin, direction: direction }
     }
 
+    pub fn between(origin: Point3<f64>, destination: Point3<f64>) -> Ray {
+        Ray::new(origin, (destination - origin).normalize())
+    }
+
     /// Returns the point of intersection and distance between the ray and the
     /// given face, if any
     pub fn intersects_face(&self, f: &Face) -> Option<(Point3<f64>, f64)> {
+        // Get the center of the face in woorld coordinates
         let p = f.transform.transform(&Point3::new(0., 0., 0.));
         let n = f.normal();
         let d = dot(&self.direction, &n);
-        match d.approx_eq(&0.) {
+        match d.approx_eq(&0.) || d > 0. {
             true => None,
             false => {
                 // Ray is not parallel to plane
                 // Find if the intersection is in the positive direction
                 let t = dot(&(p - self.origin), &n) / d;
-                match t < 0. {
-                    true => None,
-                    false => {
+                match t > 0. {
+                    true => {
                         // Find the intersection point on the face's plane and
                         // make sure it's within the face
                         let i_world = self.origin + t * self.direction;
@@ -35,7 +39,8 @@ impl Ray {
                             true => Some((i_world, norm(&(i_world - self.origin)))),
                             false => None
                         }
-                    }
+                    },
+                    false => None,
                 }
             }
         }
@@ -54,4 +59,6 @@ mod tests {
         assert!(ray.direction == direction);
         assert!(ray.origin == origin);
     }
+
+
 }

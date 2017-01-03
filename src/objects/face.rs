@@ -25,6 +25,18 @@ impl Face {
     pub fn normal(&self) -> Vector3<f64> {
         self.transform * Vector3::<f64>::z()
     }
+
+    pub fn random_on_face(&self) -> Point3<f64> {
+        use rand::distributions::*;
+        use rand::*;
+        let mut rng = thread_rng();
+        let w = self.width / 2.;
+        let h = self.height / 2.;
+        let x = Range::new(-w, w).ind_sample(&mut rng);
+        let y = Range::new(-h, h).ind_sample(&mut rng);
+
+        self.transform.transform(&Point3::new(x, y, 0.))
+    }
 }
 
 impl Clone for Face {
@@ -34,23 +46,31 @@ impl Clone for Face {
     }
 }
 
+impl PartialEq for Face {
+    fn eq(&self, other: &Face) -> bool {
+        self.width.approx_eq(&other.width) &&
+        self.height.approx_eq(&other.height) &&
+        self.transform.approx_eq(&other.transform)
+    }
+}
+
 impl Intersectable for Face {
     fn intersects(&self, ray: &Ray) -> Option<Intersection> {
         match ray.intersects_face(self) {
             Some((p, d)) => {
-                Some(Intersection::new(p, d, self.as_object()))
+                Some(Intersection::new(p, d, self.clone(), Object::from_surface(Surface::from_face(self.clone()))))
             }
             None => None
         }
     }
 }
 
-impl Surface for Face {
-    fn material(&self) -> &StdBox<Material> {
-        &self.material
+impl Drawable for Face {
+    fn material(&self) -> StdBox<Material> {
+        self.material.box_clone()
     }
 
-    fn box_clone(&self) -> StdBox<Surface> {
+    fn box_clone(&self) -> StdBox<Drawable> {
         StdBox::new(self.clone())
     }
 }
@@ -59,7 +79,7 @@ impl Surface for Face {
 mod tests {
     use super::*;
     use std::f64::consts::PI;
-    use num_traits::identities::One;
+    use num_traits::identities::*;
     use material::Simple;
     use image::Rgb;
 
@@ -96,8 +116,8 @@ mod tests {
 
     #[test]
     fn test_surface_intersects() {
-        let f = Face::new(3., 3., Isometry3::from_rotation_matrix(Vector3::new(0., 0., -5.),
-                                                                  Rotation3::one()),
+        let f = Face::new(3., 3., Isometry3::new(Vector3::new(0., 0., -5.),
+                                                 Vector3::zero()),
                           StdBox::new(Simple::new(Rgb { data: [0., 0., 0.] })));
         let i_opt = f.intersects(&Ray::new(Point3::new(0., 0., 0.), -Vector3::z()));
         assert!(i_opt.is_some());
@@ -116,10 +136,32 @@ mod tests {
     }
 
     #[test]
-    fn test_surface_no_intersects_behind() {
-        let f = Face::new(3., 3., Isometry3::from_rotation_matrix(Vector3::new(0., 0., 5.),
-                                                                  Rotation3::one()),
+    fn test_surface_no_intersects_back() {
+        let f = Face::new(3., 3., Isometry3::new(Vector3::new(0., 0., -5.),
+                                                 Vector3::y() * PI),
                           StdBox::new(Simple::new(Rgb { data: [0., 0., 0.] })));
-        assert!(f.intersects(&Ray::new(Point3::new(0., 0., 0.), -Vector3::z())).is_none());
+        let i_opt = f.intersects(&Ray::new(Point3::new(0., 0., 0.), -Vector3::z()));
+        assert!(i_opt.is_none());
+    }
+
+    #[test]
+    fn test_random_on_face() {
+        let f = test_face();
+        let p = f.random_on_face();
+        assert!(-1.5 <= p.x && p.x <= 1.5 && -0.5 <= p.y && p.y <= 0.5 && p.z.approx_eq(&0.));
+    }
+
+    #[test]
+    fn test_random_on_face_transformed() {
+        let mut f = test_face();
+        f.transform.translation = Vector3::z() * -5.;
+        f.transform.rotation = Rotation3::new(Vector3::new(0., 0., 0.7));
+        let p = f.random_on_face();
+        let ray = Ray::between(Point3::new(0., 0., 0.), p);
+        let inter_opt = f.intersects(&ray);
+        assert!(inter_opt.is_some());
+        if let Some(inter) = inter_opt {
+            assert!(inter.position.approx_eq(&p));
+        }
     }
 }

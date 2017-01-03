@@ -1,7 +1,5 @@
-use intersection::Intersection;
 use image::Rgb;
 use material::Material;
-use scene::Scene;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Simple {
@@ -15,8 +13,12 @@ impl Simple {
 }
 
 impl Material for Simple {
-    fn shade(&self, _: &Intersection, _: &Scene) -> Rgb<f64> {
+    fn ambient_color(&self) -> Rgb<f64> {
         self.color
+    }
+
+    fn diffuse_color(&self) -> Rgb<f64> {
+        Rgb { data: [0., 0., 0.] }
     }
 
     fn box_clone(&self) -> Box<Material> {

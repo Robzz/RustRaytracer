@@ -7,9 +7,9 @@ use std::f64::consts::PI;
 use objects::*;
 use intersection::*;
 use ray::Ray;
-use std::cmp::PartialOrd;
 use util::filter_nones;
 
+#[derive(Debug)]
 pub struct Box {
     top: Face,
     bottom: Face,
@@ -54,6 +54,19 @@ impl Box {
     }
 }
 
+impl PartialEq for Box {
+    fn eq(&self, other: &Box) -> bool {
+        self.top == other.top &&
+        self.bottom == other.bottom &&
+        self.left == other.left &&
+        self.right == other.right &&
+        self.front == other.front &&
+        self.back == other.back &&
+        self.transform == other.transform &&
+        self.size == other.size
+    }
+}
+
 impl Clone for Box {
     fn clone(&self) -> Box {
         Box { top: self.top.clone(), bottom: self.bottom.clone(),
@@ -64,12 +77,12 @@ impl Clone for Box {
     }
 }
 
-impl Surface for Box {
-    fn material<'a>(&'a self) -> &'a StdBox<Material> {
-        &self.material
+impl Drawable for Box {
+    fn material(&self) -> StdBox<Material> {
+        self.material.box_clone()
     }
 
-    fn box_clone(&self) -> StdBox<Surface> {
+    fn box_clone(&self) -> StdBox<Drawable> {
         StdBox::new(self.clone())
     }
 }
@@ -82,7 +95,11 @@ impl Intersectable for Box {
                                  self.right.intersects(ray),
                                  self.front.intersects(ray),
                                  self.back.intersects(ray));
-        closest_intersection(filter_nones(intersections))
+        let mut inter = closest_intersection(filter_nones(intersections));
+        if let Some(ref mut i) = inter {
+            i.object = Object::from_surface(Surface::from_box(self.clone()))
+        }
+        inter
     }
 }
 

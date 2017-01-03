@@ -5,5 +5,5 @@ mod traits;
 
 pub use self::face::*;
 pub use self::_box::*;
-pub use self::object::Object;
+pub use self::object::*;
 pub use self::traits::*;

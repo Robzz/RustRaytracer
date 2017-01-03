@@ -1,11 +1,11 @@
 use image::Rgb;
 use camera::Camera;
 use light::Light;
-use objects::*;
 use std::boxed::Box as StdBox;
 use util::filter_nones;
 use ray::Ray;
 use intersection::*;
+use objects::*;
 
 pub struct Scene {
     bg: Rgb<f64>,
@@ -35,7 +35,7 @@ impl Scene {
         self.objects.iter().collect()
     }
 
-    pub fn surfaces(&self) -> Vec<&StdBox<Surface>> {
+    pub fn surfaces(&self) -> Vec<&Surface> {
         self.objects.iter().filter_map(|o| o.as_surface()).collect()
     }
 

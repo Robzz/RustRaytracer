@@ -1,29 +1,12 @@
 use image::Rgb;
-use intersection::Intersection;
-use scene::Scene;
-use material::Material;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct LightMaterial {
-    color: Rgb<f64>
+    pub diffuse_intensity: Rgb<f64>
 }
 
 impl LightMaterial {
-    pub fn new(color: Rgb<f64>) -> LightMaterial {
-        LightMaterial { color: color }
-    }
-
-    pub fn to_material(&self) -> Box<Material> {
-        Box::new(self.clone())
-    }
-}
-
-impl Material for LightMaterial {
-    fn shade(&self, _: &Intersection, _: &Scene) -> Rgb<f64> {
-        self.color
-    }
-
-    fn box_clone(&self) -> Box<Material> {
-        Box::new(self.clone())
+    pub fn new(diffuse: Rgb<f64>) -> LightMaterial {
+        LightMaterial { diffuse_intensity: diffuse }
     }
 }
