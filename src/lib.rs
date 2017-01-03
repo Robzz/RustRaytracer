@@ -6,12 +6,13 @@ extern crate nalgebra;
 extern crate num_traits;
 extern crate rand;
 
-pub mod ray;
-pub mod scene;
+pub mod algebra;
 pub mod camera;
 pub mod intersection;
+pub mod light;
 pub mod material;
 pub mod objects;
-pub mod light;
-pub mod algebra;
+pub mod ray;
+pub mod raytracer;
+pub mod scene;
 pub mod util;
