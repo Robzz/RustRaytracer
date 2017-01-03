@@ -166,12 +166,12 @@ fn render(scene: &Scene) -> RgbImage {
     for (x, y_inverted, pixel) in img.enumerate_pixels_mut() {
         print_progress(i as f64 / n_pixels);
 
-        let step = 1. / N as f64;
+        let step = 1. / (N + 1) as f64;
         let y = height - 1 - y_inverted;
-        let mut yf = y as f64;
+        let mut yf = (y as f64) + step / 2.;
         let mut energy = Rgb { data: [0., 0., 0.] };
         while yf < (y + 1) as f64 {
-            let mut xf = x as f64;
+            let mut xf = (x as f64) + step / 2.;
             while xf < (x + 1) as f64 {
                 let ray = scene.camera().pixel_ray((xf, yf)).unwrap();
                 let ray_energy = ray_energy(scene, &ray);
