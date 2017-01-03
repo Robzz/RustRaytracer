@@ -32,11 +32,24 @@ impl Light {
         &self.material
     }
 
-    pub fn shade(&self, n: Vector3<f64>, obj: &Object, ray: &Ray, inter: &Intersection) -> Rgb<f64> {
+    pub fn shade_diffuse(&self, n: Vector3<f64>, obj: &Object, ray: &Ray, inter: &Intersection) -> Rgb<f64> {
         let l = (inter.position - ray.origin).normalize();
         let d = l.dot(&n);
         let mut c = rgb_mul(&self.material.diffuse_intensity, d);
         c = rgb_mul2(&c, &obj.material().diffuse_color());
+
+        c
+    }
+
+    pub fn shade_specular(&self, eye: Point3<f64>, n: Vector3<f64>, obj: &Object,
+                          ray: &Ray, inter: &Intersection) -> Rgb<f64> {
+        let l = (inter.position - ray.origin).normalize();
+        let dln = l.dot(&n);
+        let r = 2. * dln * n - l;
+        let v = (eye - ray.origin).normalize();
+        let d = r.dot(&v).powf(obj.material().shininess());
+        let mut c = rgb_mul(&self.material.specular_intensity, d);
+        c = rgb_mul2(&c, &obj.material().specular_color());
 
         c
     }

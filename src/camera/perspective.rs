@@ -36,6 +36,10 @@ impl Camera for Perspective {
             }
         }
     }
+
+    fn eye_position(&self) -> Point3<f64> {
+        self.transform.transform(&Point3::new(0., 0., 0.))
+    }
 }
 
 #[cfg(test)]

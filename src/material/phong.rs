@@ -24,6 +24,14 @@ impl Material for Phong {
         self.diffuse
     }
 
+    fn specular_color(&self) -> Rgb<f64> {
+        self.specular
+    }
+
+    fn shininess(&self) -> f64 {
+        self.shininess
+    }
+
     fn box_clone(&self) -> Box<Material> {
         Box::new(self.clone())
     }

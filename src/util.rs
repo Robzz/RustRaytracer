@@ -1,4 +1,5 @@
 use image::*;
+use nalgebra::clamp;
 
 pub fn rgb_01_to_255(pixel: &Rgb<f64>) -> Rgb<f64> {
     Rgb { data: [pixel[0] * 255., pixel[1] * 255., pixel[2] * 255.] }
@@ -27,6 +28,10 @@ pub fn rgb_mul(r: &Rgb<f64>, f: f64) -> Rgb<f64> {
 
 pub fn rgb_mul2(r1: &Rgb<f64>, r2: &Rgb<f64>) -> Rgb<f64> {
     r1.map2(r2, |c1, c2| c1 * c2)
+}
+
+pub fn rgb_clamp_0_1(r: &Rgb<f64>) -> Rgb<f64> {
+    r.map(|c| clamp(c, 0., 1.))
 }
 
 pub fn filter_nones<T>(v: Vec<Option<T>>) -> Vec<T> {

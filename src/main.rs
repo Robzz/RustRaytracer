@@ -72,6 +72,7 @@ fn render(scene: &Scene) -> RgbImage {
                 Object::Surface(ref s) => {
                     // Cast light rays and compute diffuse component
                     let mut diffuse = Rgb { data: [0., 0., 0.] };
+                    let mut specular = Rgb { data: [0., 0., 0.] };
                     let surface_normal = intersect.face.normal();
                     for light in scene.lights() {
                         let mut i = 0;
@@ -82,8 +83,10 @@ fn render(scene: &Scene) -> RgbImage {
                                 None => (),
                                 Some(light_inter) => {
                                     if light_inter.object == Object::from_light(light.clone()) {
-                                        let ray_color = light.shade(surface_normal, &intersect.object, &light_ray, &light_inter);
-                                        diffuse = rgb_add(&diffuse, &ray_color);
+                                        let ray_diffuse_color = light.shade_diffuse(surface_normal, &intersect.object, &light_ray, &light_inter);
+                                        let ray_specular_color = light.shade_specular(scene.camera().eye_position(), surface_normal, &intersect.object, &light_ray, &light_inter);
+                                        diffuse = rgb_add(&diffuse, &ray_diffuse_color);
+                                        specular = rgb_add(&specular, &ray_specular_color);
                                     }
                                 }
                             }
@@ -92,9 +95,11 @@ fn render(scene: &Scene) -> RgbImage {
                             }
                             i += 1;
                         }
-                        diffuse = rgb_01_to_255(&rgb_div(&diffuse, RAYS_PER_PIXEL as f64));
-                        let color = rgb_add(&diffuse, &rgb_01_to_255(&s.material().ambient_color()));
-                        *pixel = rgb_to_u8(&color);
+                        diffuse = rgb_div(&diffuse, RAYS_PER_PIXEL as f64);
+                        specular = rgb_div(&specular, RAYS_PER_PIXEL as f64);
+                        let mut color = rgb_add(&diffuse, &s.material().ambient_color());
+                        color = rgb_add(&color, &specular);
+                        *pixel = rgb_to_u8(&rgb_01_to_255(&rgb_clamp_0_1(&color)));
                     }
                 }
             }
@@ -114,10 +119,16 @@ fn main() {
     let output_path = Path::new(&output);
 
     let ambient = Rgb { data: [0.1, 0.1, 0.1] };
-    let specular = Rgb { data: [0., 0., 0.] };
-    let material_blue   = Phong::new(ambient, Rgb { data: [0.1, 0.2, 0.7] }, specular, 0.);
-    let material_grey   = Phong::new(ambient, Rgb { data: [0.6, 0.6, 0.6] }, specular, 0.);
-    let material_light  = LightMaterial::new(Rgb { data: [1.0, 1.0, 1.0] });
+    let material_blue   = Phong::new(ambient,
+                                     Rgb { data: [0.1, 0.2, 0.7] },
+                                     Rgb { data: [0.7, 0.7, 0.9] },
+                                     2.);
+    let material_grey   = Phong::new(ambient,
+                                     Rgb { data: [0.6, 0.6, 0.6] },
+                                     Rgb { data: [0.6, 0.6, 0.6] },
+                                     2.);
+    let material_light  = LightMaterial::new(Rgb { data: [1.0, 1.0, 1.0] },
+                                             Rgb { data: [0.4, 0.4, 0.4] });
     let wall_left = Face::new(50., 50.,
                               Isometry3::new(Vector3::new(-2., 0., -2.), Vector3::y() * (PI / 2.)),
                               StdBox::new(material_grey.clone()));

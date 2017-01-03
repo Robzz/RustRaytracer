@@ -21,6 +21,14 @@ impl Material for Simple {
         Rgb { data: [0., 0., 0.] }
     }
 
+    fn specular_color(&self) -> Rgb<f64> {
+        Rgb { data: [0., 0., 0.] }
+    }
+
+    fn shininess(&self) -> f64 {
+        1.
+    }
+
     fn box_clone(&self) -> Box<Material> {
         Box::new(self.clone())
     }
