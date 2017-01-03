@@ -17,7 +17,7 @@ mod material;
 mod objects;
 mod conversions;
 mod light;
-mod algrebra;
+mod algebra;
 mod util;
 
 use image::*;
@@ -45,8 +45,57 @@ arg_width: u32, arg_height: u32);
 const N: u32 = 10;
 const N2: u32 = N*N;
 
+const N_BOUNCES : u32 = 6;
+
 fn print_progress(progress: f64) {
     println!("\x1B[1A\x1B[2K{}%", progress * 100.);
+}
+
+fn reflection_ray(scene: &Scene, ray: &Ray, bounces: u32) -> Rgb<f64> {
+    let mut pixel = Rgb { data: [0., 0., 0.] };
+    let intersect_opt = scene.intersects(ray);
+    if let Some(intersect) = intersect_opt {
+        match intersect.object {
+            Object::Light(ref l) => {
+                // Return the light diffuse color and stop bouncing
+                pixel = l.light_material().diffuse_intensity;
+            },
+            Object::Surface(ref s) => {
+                // Cast light ray and compute Phong shading
+                let surface_normal = intersect.face.normal();
+                for light in scene.lights() {
+                    let p = light.random_on_face();
+                    let light_ray = Ray::between(intersect.position, p);
+                    match scene.intersects(&light_ray) {
+                        None => (),
+                        Some(light_inter) => {
+                            if light_inter.object == Object::from_light(light.clone()) {
+                                let ray_diffuse_color = light.shade_diffuse(surface_normal, &intersect.object, &light_ray, &light_inter);
+                                let ray_specular_color = light.shade_specular(scene.camera().eye_position(), surface_normal, &intersect.object, &light_ray, &light_inter);
+                                let mut color = rgb_add(&ray_diffuse_color, &s.material().ambient_color());
+                                color = rgb_add(&color, &ray_specular_color);
+
+                                // Cast a reflection ray for glossy reflection
+                                if bounces != 0 {
+                                    let l = light_ray.direction.normalize();
+                                    let dln = l.dot(&surface_normal);
+                                    let r = 2. * dln * surface_normal - l;
+                                    let refl_ray = Ray::new(intersect.position, random_in_cone(r, (30.).to_radians()));
+                                    let reflection_color = reflection_ray(scene, &refl_ray, bounces - 1);
+                                    color = rgb_add(&color, &reflection_color);
+                                    pixel = color;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    else {
+        pixel = scene.background();
+    }
+    pixel
 }
 
 fn ray_energy(scene: &Scene, ray: &Ray) -> Rgb<f64> {
@@ -72,8 +121,19 @@ fn ray_energy(scene: &Scene, ray: &Ray) -> Rgb<f64> {
                             if light_inter.object == Object::from_light(light.clone()) {
                                 let ray_diffuse_color = light.shade_diffuse(surface_normal, &intersect.object, &light_ray, &light_inter);
                                 let ray_specular_color = light.shade_specular(scene.camera().eye_position(), surface_normal, &intersect.object, &light_ray, &light_inter);
-                                let color = rgb_add(&ray_diffuse_color, &s.material().ambient_color());
-                                return rgb_add(&color, &ray_specular_color);
+                                let mut color = rgb_add(&ray_diffuse_color, &s.material().ambient_color());
+                                color = rgb_add(&color, &ray_specular_color);
+
+                                // Cast a reflection ray for glossy reflection
+                                let l = light_ray.direction.normalize();
+                                let dln = l.dot(&surface_normal);
+                                let r = 2. * dln * surface_normal - l;
+                                let refl_ray = Ray::new(intersect.position, random_in_cone(r, (30.).to_radians()));
+                                let reflection_color = rgb_div(&reflection_ray(scene, &refl_ray, N_BOUNCES), N_BOUNCES as f64);
+                                color = rgb_add(&color, &reflection_color);
+                                color = rgb_div(&color, 2.);
+
+                                pixel = color;
                             }
                         }
                     }
@@ -122,6 +182,7 @@ fn render(scene: &Scene) -> RgbImage {
         }
         energy = rgb_clamp_0_1(&rgb_div(&energy, N2 as f64));
         *pixel = rgb_to_u8(&rgb_01_to_255(&correct_gamma(&energy)));
+        //*pixel = rgb_to_u8(&rgb_01_to_255(&energy));
         i += 1;
     }
     img
@@ -135,16 +196,20 @@ fn main() {
     let output_path = Path::new(&output);
 
     let ambient = Rgb { data: [0.1, 0.1, 0.1] };
-    let material_blue   = Phong::new(ambient,
-                                     Rgb { data: [0.1, 0.2, 0.8] },
-                                     Rgb { data: [0.4, 0.4, 0.9] },
-                                     2.);
-    let material_grey   = Phong::new(ambient,
-                                     Rgb { data: [0.6, 0.6, 0.6] },
-                                     Rgb { data: [0.6, 0.6, 0.6] },
-                                     2.);
-    let material_light  = LightMaterial::new(Rgb { data: [1.0, 1.0, 1.0] },
-                                             Rgb { data: [0.4, 0.4, 0.4] });
+    let material_blue = Phong::new(ambient,
+                                   Rgb { data: [0.1, 0.2, 1.] },
+                                   Rgb { data: [0.4, 0.4, 0.4] },
+                                   2.);
+    let material_red  = Phong::new(ambient,
+                                   Rgb { data: [1., 0.2, 0.1] },
+                                   Rgb { data: [0.6, 0.6, 0.6] },
+                                   2.);
+    let material_grey = Phong::new(ambient,
+                                   Rgb { data: [0.6, 0.6, 0.6] },
+                                   Rgb { data: [0.6, 0.6, 0.6] },
+                                   2.);
+    let material_light  = LightMaterial::new(Rgb { data: [0.6, 0.6, 0.6] },
+                                             Rgb { data: [0.25, 0.25, 0.25] });
     let wall_left = Face::new(50., 50.,
                               Isometry3::new(Vector3::new(-2., 0., -2.), Vector3::y() * (PI / 2.)),
                               StdBox::new(material_grey.clone()));
@@ -163,6 +228,9 @@ fn main() {
     let box1 = Box::new(Vector3::new(1., 1., 1.),
                         Isometry3::new(Vector3::new(1., 0.5, -4.), Vector3::zero()),
                         StdBox::new(material_blue));
+    let box2 = Box::new(Vector3::new(1., 2., 1.),
+                        Isometry3::new(Vector3::new(-1., 1., -4.), Vector3::y() * PI / 4.),
+                        StdBox::new(material_red));
     let light = Light::new(Face::new(0.5, 0.5,
                                      Isometry3::new(Vector3::new(0., 2.99, -3.), Vector3::x() * (PI / 2.)),
                                      StdBox::new(material_grey.clone())),
@@ -179,6 +247,7 @@ fn main() {
                                 Object::from_surface(Surface::from_face(ceiling)),
                                 Object::from_surface(Surface::from_face(ground)),
                                 Object::from_surface(Surface::from_box(box1)),
+                                Object::from_surface(Surface::from_box(box2)),
                                 Object::from_light(light)),
                            StdBox::new(cam));
 

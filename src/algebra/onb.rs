@@ -7,11 +7,11 @@ pub struct OrthoNormalBase {
 }
 
 impl OrthoNormalBase {
-    fn u(&self) -> Vector3<f64> { self.u }
-    fn v(&self) -> Vector3<f64> { self.v }
-    fn w(&self) -> Vector3<f64> { self.w }
+    pub fn u(&self) -> Vector3<f64> { self.u }
+    pub fn v(&self) -> Vector3<f64> { self.v }
+    pub fn w(&self) -> Vector3<f64> { self.w }
 
-    fn from_u(u: Vector3<f64>) -> OrthoNormalBase {
+    pub fn from_u(u: Vector3<f64>) -> OrthoNormalBase {
         let un = u.normalize();
         let mut v = un.cross(&Vector3::x());
         if v.norm().approx_eq(&0.) {
@@ -21,7 +21,7 @@ impl OrthoNormalBase {
         OrthoNormalBase { u:un, v:v, w:w }
     }
 
-    fn from_v(v: Vector3<f64>) -> OrthoNormalBase {
+    pub fn from_v(v: Vector3<f64>) -> OrthoNormalBase {
         let vn = v.normalize();
         let mut u = vn.cross(&Vector3::x());
         if u.norm().approx_eq(&0.) {
@@ -31,7 +31,7 @@ impl OrthoNormalBase {
         OrthoNormalBase { u:u, v:vn, w:w }
     }
 
-    fn from_w(w: Vector3<f64>) -> OrthoNormalBase {
+    pub fn from_w(w: Vector3<f64>) -> OrthoNormalBase {
         let wn = w.normalize();
         let mut u = wn.cross(&Vector3::x());
         if u.norm().approx_eq(&0.) {
