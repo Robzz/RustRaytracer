@@ -44,7 +44,7 @@ fn reflection_ray(scene: &Scene, ray: &Ray, bounces: u32) -> Rgb<f64> {
             },
             Object::Surface(ref s) => {
                 // Cast light ray and compute Phong shading
-                let surface_normal = intersect.face.normal();
+                let surface_normal = intersect.normal;
                 for light in scene.lights() {
                     let p = light.random_on_face();
                     let light_ray = Ray::between(intersect.position, p);
@@ -93,7 +93,7 @@ fn ray_energy(scene: &Scene, ray: &Ray, bounces: u32) -> Rgb<f64> {
             },
             Object::Surface(ref s) => {
                 // Cast light ray and compute Phong shading
-                let surface_normal = intersect.face.normal();
+                let surface_normal = intersect.normal;
                 for light in scene.lights() {
                     let p = light.random_on_face();
                     let light_ray = Ray::between(intersect.position, p);

@@ -58,7 +58,7 @@ impl Intersectable for Face {
     fn intersects(&self, ray: &Ray) -> Option<Intersection> {
         match ray.intersects_face(self) {
             Some((p, d)) => {
-                Some(Intersection::new(p, d, self.clone(), Object::from_surface(Surface::from_face(self.clone()))))
+                Some(Intersection::new(p, d, self.normal(), Object::from_surface(Surface::from_face(self.clone()))))
             }
             None => None
         }

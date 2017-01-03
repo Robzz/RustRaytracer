@@ -5,13 +5,15 @@ use objects::*;
 pub struct Intersection {
     pub position: Point3<f64>,
     pub distance: f64,
-    pub face: Face,
+    pub normal: Vector3<f64>,
     pub object: Object
 }
 
 impl Intersection {
-    pub fn new(position: Point3<f64>, distance: f64, face: Face, object: Object) -> Intersection {
-        Intersection { position: position, distance: distance, face: face, object: object }
+    pub fn new(position: Point3<f64>, distance: f64, normal: Vector3<f64>,
+               object: Object) -> Intersection {
+        Intersection { position: position, distance: distance, normal: normal,
+                       object: object }
     }
 }
 
@@ -35,7 +37,7 @@ mod tests {
         let d = 5.;
         let f = Face::new(1., 1., Isometry3::one(), StdBox::new(Simple::new(Rgb { data: [0., 0., 0.] })));
         let obj = Object::from_surface(Surface::from_face(f.clone()));
-        let i = Intersection::new(pos, d, f, obj);
+        let i = Intersection::new(pos, d, f.normal(), obj);
         assert!(i.position == pos);
         assert!(i.distance == d);
     }
