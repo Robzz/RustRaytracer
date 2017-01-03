@@ -38,11 +38,11 @@ fn reflection_ray(scene: &Scene, ray: &Ray, bounces: u32) -> Rgb<f64> {
     let intersect_opt = scene.intersects(ray);
     if let Some(intersect) = intersect_opt {
         match intersect.object {
-            Object::Light(ref l) => {
+            &Object::Light(ref l) => {
                 // Return the light diffuse color and stop bouncing
                 pixel = l.light_material().diffuse_intensity;
             },
-            Object::Surface(ref s) => {
+            &Object::Surface(ref s) => {
                 // Cast light ray and compute Phong shading
                 let surface_normal = intersect.normal;
                 for light in scene.lights() {
@@ -51,10 +51,10 @@ fn reflection_ray(scene: &Scene, ray: &Ray, bounces: u32) -> Rgb<f64> {
                     match scene.intersects(&light_ray) {
                         None => (),
                         Some(light_inter) => {
-                            if light_inter.object == Object::from_light(light.clone()) {
+                            if light_inter.object == &Object::from_light(light.clone()) {
                                 let ray_diffuse_color = light.shade_diffuse(surface_normal, &intersect.object, &light_ray, &light_inter);
                                 let ray_specular_color = light.shade_specular(scene.camera().eye_position(), surface_normal, &intersect.object, &light_ray, &light_inter);
-                                let mut color = rgb_add(&ray_diffuse_color, &s.material().ambient_color());
+                                let mut color = rgb_add(&ray_diffuse_color, &intersect.object.material().ambient_color());
                                 color = rgb_add(&color, &ray_specular_color);
 
                                 // Cast a reflection ray for glossy reflection
@@ -87,11 +87,11 @@ fn ray_energy(scene: &Scene, ray: &Ray, bounces: u32) -> Rgb<f64> {
 
     if let Some(intersect) = intersect_opt {
         match intersect.object {
-            Object::Light(ref l) => {
+            &Object::Light(ref l) => {
                 // Paint the light with its diffuse color
                 pixel = l.light_material().diffuse_intensity;
             },
-            Object::Surface(ref s) => {
+            &Object::Surface(ref s) => {
                 // Cast light ray and compute Phong shading
                 let surface_normal = intersect.normal;
                 for light in scene.lights() {
@@ -100,22 +100,22 @@ fn ray_energy(scene: &Scene, ray: &Ray, bounces: u32) -> Rgb<f64> {
                     match scene.intersects(&light_ray) {
                         None => (),
                         Some(light_inter) => {
-                            if light_inter.object == Object::from_light(light.clone()) {
+                            if light_inter.object == &Object::from_light(light.clone()) {
                                 let ray_diffuse_color = light.shade_diffuse(surface_normal, &intersect.object, &light_ray, &light_inter);
                                 let ray_specular_color = light.shade_specular(scene.camera().eye_position(), surface_normal, &intersect.object, &light_ray, &light_inter);
-                                let mut color = rgb_add(&ray_diffuse_color, &s.material().ambient_color());
+                                let mut color = rgb_add(&ray_diffuse_color, &intersect.object.material().ambient_color());
                                 color = rgb_add(&color, &ray_specular_color);
 
                                 // Cast a reflection ray for glossy reflection
-                                //if bounces != 0 {
-                                    //let l = light_ray.direction.normalize();
-                                    //let dln = l.dot(&surface_normal);
-                                    //let r = 2. * dln * surface_normal - l;
-                                    //let refl_ray = Ray::new(intersect.position, random_in_cone(r, (30.).to_radians()));
-                                    //let reflection_color = rgb_div(&reflection_ray(scene, &refl_ray, bounces), bounces as f64);
-                                    //color = rgb_add(&color, &reflection_color);
-                                    //color = rgb_div(&color, 2.);
-                                //}
+                                if bounces != 0 {
+                                    let l = light_ray.direction.normalize();
+                                    let dln = l.dot(&surface_normal);
+                                    let r = 2. * dln * surface_normal - l;
+                                    let refl_ray = Ray::new(intersect.position, random_in_cone(r, (30.).to_radians()));
+                                    let reflection_color = rgb_div(&reflection_ray(scene, &refl_ray, bounces), bounces as f64);
+                                    color = rgb_add(&color, &reflection_color);
+                                    color = rgb_div(&color, 2.);
+                                }
 
                                 pixel = color;
                             }

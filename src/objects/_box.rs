@@ -4,22 +4,18 @@ use nalgebra::*;
 use std::boxed::Box as StdBox;
 use num_traits::{One, Zero};
 use std::f64::consts::PI;
-use objects::*;
-use intersection::*;
-use ray::Ray;
-use util::filter_nones;
 
 #[derive(Debug)]
 pub struct Box {
-    top: Face,
-    bottom: Face,
-    left: Face,
-    right: Face,
-    front: Face,
-    back: Face,
-    transform: Isometry3<f64>,
-    size: Vector3<f64>,
-    material: StdBox<Material>
+    pub top: Face,
+    pub bottom: Face,
+    pub left: Face,
+    pub right: Face,
+    pub front: Face,
+    pub back: Face,
+    pub transform: Isometry3<f64>,
+    pub size: Vector3<f64>,
+    pub material: StdBox<Material>
 }
 
 impl Box {
@@ -74,69 +70,5 @@ impl Clone for Box {
               front: self.front.clone(), back: self.back.clone(),
               transform: self.transform, size: self.size,
               material: self.material.box_clone() }
-    }
-}
-
-impl Drawable for Box {
-    fn material(&self) -> StdBox<Material> {
-        self.material.box_clone()
-    }
-
-    fn box_clone(&self) -> StdBox<Drawable> {
-        StdBox::new(self.clone())
-    }
-}
-
-impl Intersectable for Box {
-    fn intersects(&self, ray: &Ray) -> Option<Intersection> {
-        let intersections = vec!(self.top.intersects(ray),
-                                 self.bottom.intersects(ray),
-                                 self.left.intersects(ray),
-                                 self.right.intersects(ray),
-                                 self.front.intersects(ray),
-                                 self.back.intersects(ray));
-        let mut inter = closest_intersection(filter_nones(intersections));
-        if let Some(ref mut i) = inter {
-            i.object = Object::from_surface(Surface::from_box(self.clone()))
-        }
-        inter
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use material::Simple;
-    use ray::Ray;
-    use image::Rgb;
-
-    #[test]
-    fn test_intersects_straight() {
-        let mat = Simple::new(Rgb { data: [1.0, 1.0, 1.0] });
-        let b = Box::new(Vector3::one(),
-                         Isometry3::new(Vector3::z() * 5., Vector3::zero()),
-                         StdBox::new(mat));
-        let ray = Ray::new(Point3::new(0., 0., 0.), Vector3::z());
-        let inter_opt = b.intersects(&ray);
-        assert!(inter_opt.is_some());
-        if let Some(i) = inter_opt {
-            assert!(i.distance.approx_eq(&4.5));
-            assert!(i.position.approx_eq(&Point3::new(0., 0., 4.5)));
-        }
-    }
-
-    #[test]
-    fn test_intersects_translated() {
-        let mat = Simple::new(Rgb { data: [1.0, 1.0, 1.0] });
-        let b = Box::new(Vector3::one(),
-                         Isometry3::new(Vector3::new(5., 5., 5.), Vector3::zero()),
-                         StdBox::new(mat));
-        let ray = Ray::new(Point3::new(5., 5., 0.), Vector3::z());
-        let inter_opt = b.intersects(&ray);
-        assert!(inter_opt.is_some());
-        if let Some(i) = inter_opt {
-            assert!(i.distance.approx_eq(&4.5));
-            assert!(i.position.approx_eq(&Point3::new(5., 5., 4.5)));
-        }
     }
 }

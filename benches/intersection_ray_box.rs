@@ -13,6 +13,7 @@ use std::boxed::Box as StdBox;
 use rust_raytracer::objects::{Box, Intersectable};
 use rust_raytracer::material::Phong;
 use rust_raytracer::ray::Ray;
+use rust_raytracer::intersection::ray_box;
 
 #[bench]
 fn test_intersection_box_intersects(b: &mut Bencher) -> () {
@@ -26,7 +27,7 @@ fn test_intersection_box_intersects(b: &mut Bencher) -> () {
                         StdBox::new(mat));
     let ray = Ray::new(Point3::new(0., 0., 0.), -Vector3::z());
     b.iter(|| {
-        _box.intersects(&ray);
+        ray_box(&ray, &_box);
     });
 }
 
@@ -42,6 +43,6 @@ fn test_intersection_box_no_intersects(b: &mut Bencher) -> () {
                         StdBox::new(mat));
     let ray = Ray::new(Point3::new(0., 0., 0.), -Vector3::z());
     b.iter(|| {
-        _box.intersects(&ray);
+        ray_box(&ray, &_box);
     });
 }

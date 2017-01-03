@@ -1,17 +1,16 @@
-use material::{Material, LightMaterial};
+use material::{LightMaterial};
 use objects::*;
 use nalgebra::*;
-use std::boxed::Box as StdBox;
 use ray::Ray;
-use intersection::Intersection;
+use intersection::{ray_face, Intersection};
 use image::Rgb;
 use util::*;
 use std::f64::consts::PI;
 
 #[derive(Debug, PartialEq)]
 pub struct Light {
-    face: Face,
-    material: LightMaterial
+    pub face: Face,
+    pub material: LightMaterial
 }
 
 impl Light {
@@ -20,10 +19,6 @@ impl Light {
     }
 
     pub fn transform(&self) -> Isometry3<f64> { self.face.transform }
-
-    pub fn as_drawable(&self) -> &Drawable {
-        self
-    }
 
     pub fn random_on_face(&self) -> Point3<f64> {
         self.face.random_on_face()
@@ -62,25 +57,5 @@ impl Clone for Light {
     fn clone(&self) -> Light {
         Light { face: self.face.clone(),
                 material: self.material.clone() }
-    }
-}
-
-impl Intersectable for Light {
-    fn intersects(&self, ray: &Ray) -> Option<Intersection> {
-        let mut inter_opt = self.face.intersects(ray);
-        if let Some(ref mut inter) = inter_opt {
-            inter.object = Object::from_light(self.clone())
-        }
-        inter_opt
-    }
-}
-
-impl Drawable for Light {
-    fn material(&self) -> StdBox<Material> {
-        self.face.material()
-    }
-
-    fn box_clone(&self) -> StdBox<Drawable> {
-        StdBox::new(self.clone())
     }
 }

@@ -1,7 +1,7 @@
 use light::Light;
 use objects::*;
 use ray::Ray;
-use intersection::Intersection;
+use intersection::{ray_face, ray_box, Intersection};
 use material::Material;
 use std::boxed::Box as StdBox;
 
@@ -31,31 +31,6 @@ impl Surface {
         match self {
             &Surface::Face(_) => true,
             _ => false
-        }
-    }
-}
-
-impl Intersectable for Surface {
-    fn intersects(&self, ray: &Ray) -> Option<Intersection> {
-        match self {
-            &Surface::Box(ref b) => b.intersects(ray),
-            &Surface::Face(ref f) => f.intersects(ray)
-        }
-    }
-}
-
-impl Drawable for Surface {
-    fn material(&self) -> StdBox<Material> {
-        match self {
-            &Surface::Box(ref b) => b.material(),
-            &Surface::Face(ref f) => f.material()
-        }
-    }
-
-    fn box_clone(&self) -> StdBox<Drawable> {
-        match self {
-            &Surface::Box(ref b) => b.box_clone(),
-            &Surface::Face(ref f) => f.box_clone()
         }
     }
 }
@@ -130,24 +105,46 @@ impl Object {
 impl Intersectable for Object {
     fn intersects(&self, ray: &Ray) -> Option<Intersection> {
         match self {
-            &Object::Light(ref l) => l.intersects(ray),
-            &Object::Surface(ref s) => s.intersects(ray)
+            &Object::Light(ref l) => {
+                match ray_face(ray, &l.face) {
+                    Some(hit) => Some(Intersection::new(hit.0, hit.1, hit.2, self)),
+                    None => None
+                }
+            }
+            &Object::Surface(ref s) => {
+                match s {
+                    &Surface::Face(ref f) => {
+                        match ray_face(ray, f) {
+                            Some(hit) => Some(Intersection::new(hit.0, hit.1, hit.2, self)),
+                            None => None
+                        }
+                    }
+                    &Surface::Box(ref b) => {
+                        match ray_box(ray, b) {
+                            Some(hit) => Some(Intersection::new(hit.0, hit.1, hit.2, self)),
+                            None => None
+                        }
+                    }
+                }
+            }
         }
     }
 }
 
 impl Drawable for Object {
-    fn material(&self) -> StdBox<Material> {
+    fn material(&self) -> &StdBox<Material> {
         match self {
-            &Object::Light(ref l) => l.material(),
-            &Object::Surface(ref s) => s.material()
+            &Object::Light(ref l) => &l.face.material,
+            &Object::Surface(ref s) => {
+                match s {
+                    &Surface::Face(ref f) => &f.material,
+                    &Surface::Box(ref b) => &b.material
+                }
+            }
         }
     }
 
     fn box_clone(&self) -> StdBox<Drawable> {
-        match self {
-            &Object::Light(ref l) => l.box_clone(),
-            &Object::Surface(ref s) => s.box_clone()
-        }
+        StdBox::new(self.clone())
     }
 }

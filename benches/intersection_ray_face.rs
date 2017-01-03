@@ -12,6 +12,7 @@ use image::Rgb;
 use rust_raytracer::objects::{Face, Intersectable};
 use rust_raytracer::material::Phong;
 use rust_raytracer::ray::Ray;
+use rust_raytracer::intersection::ray_face;
 
 #[bench]
 fn test_intersection_face_intersects(b: &mut Bencher) -> () {
@@ -22,7 +23,7 @@ fn test_intersection_face_intersects(b: &mut Bencher) -> () {
     let face = Face::new(1., 1., Isometry3::new(Vector3::new(0., 0., -1.), Vector3::new(0., 0. ,0.)), Box::new(mat));
     let ray = Ray::new(Point3::new(0., 0., 0.), -Vector3::z());
     b.iter(|| {
-        face.intersects(&ray);
+        ray_face(&ray, &face);
     });
 }
 
@@ -35,6 +36,6 @@ fn test_intersection_face_no_intersects(b: &mut Bencher) -> () {
     let face = Face::new(1., 1., Isometry3::new(Vector3::new(0., 0., 1.), Vector3::new(0., 0. ,0.)), Box::new(mat));
     let ray = Ray::new(Point3::new(0., 0., 0.), -Vector3::z());
     b.iter(|| {
-        face.intersects(&ray);
+        ray_face(&ray, &face);
     });
 }
