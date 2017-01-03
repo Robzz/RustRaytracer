@@ -55,10 +55,18 @@ mod tests {
         let cam = Perspective::new((800, 600), ((90.).to_radians(), (90.).to_radians()), Isometry3::one());
         let ray_opt = cam.pixel_ray((0., 0.));
         let ray = ray_opt.unwrap();
-        println!("{:?}", ray);
         assert!(ray.origin.approx_eq(&Point3::new(0., 0., 0.)));
         let f = (-PI / 4.).tan();
-        println!("{:?}", f);
+        assert!(ray.direction.approx_eq(&Vector3::new(f, f, -1.).normalize()));
+    }
+
+    #[test]
+    fn test_pixel_ray_top_right() {
+        let cam = Perspective::new((800, 600), ((90.).to_radians(), (90.).to_radians()), Isometry3::one());
+        let ray_opt = cam.pixel_ray((799., 599.));
+        let ray = ray_opt.unwrap();
+        assert!(ray.origin.approx_eq(&Point3::new(0., 0., 0.)));
+        let f = (PI / 4.).tan();
         assert!(ray.direction.approx_eq(&Vector3::new(f, f, -1.).normalize()));
     }
 }

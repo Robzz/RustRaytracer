@@ -42,74 +42,90 @@ Options:
 ",
 arg_width: u32, arg_height: u32);
 
-const RAYS_PER_PIXEL: u32 = 100;
+const N: u32 = 10;
+const N2: u32 = N*N;
 
 fn print_progress(progress: f64) {
     println!("\x1B[1A\x1B[2K{}%", progress * 100.);
+}
+
+fn ray_energy(scene: &Scene, ray: &Ray) -> Rgb<f64> {
+    // Find closest intersection
+    let intersect_opt = scene.intersects(&ray);
+    let mut pixel = Rgb { data: [0., 0., 0.] };
+
+    if let Some(intersect) = intersect_opt {
+        match intersect.object {
+            Object::Light(ref l) => {
+                // Paint the light with its diffuse color
+                pixel = l.light_material().diffuse_intensity;
+            },
+            Object::Surface(ref s) => {
+                // Cast light ray and compute Phong shading
+                let surface_normal = intersect.face.normal();
+                for light in scene.lights() {
+                    let p = light.random_on_face();
+                    let light_ray = Ray::between(intersect.position, p);
+                    match scene.intersects(&light_ray) {
+                        None => (),
+                        Some(light_inter) => {
+                            if light_inter.object == Object::from_light(light.clone()) {
+                                let ray_diffuse_color = light.shade_diffuse(surface_normal, &intersect.object, &light_ray, &light_inter);
+                                let ray_specular_color = light.shade_specular(scene.camera().eye_position(), surface_normal, &intersect.object, &light_ray, &light_inter);
+                                let color = rgb_add(&ray_diffuse_color, &s.material().ambient_color());
+                                return rgb_add(&color, &ray_specular_color);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    else {
+        pixel = scene.background();
+    }
+    pixel
+}
+
+fn correct_gamma(p: &Rgb<f64>) -> Rgb<f64> {
+    const A: f64 = 0.055;
+    p.map(|c| {
+        match c <= 0.0031308 {
+            true => 12.92 * c,
+            false => (1. + A) * c.powf(1. / 2.4) - A
+        }
+    })
 }
 
 fn render(scene: &Scene) -> RgbImage {
     let (width, height) = scene.camera().viewport();
     let mut img = RgbImage::new(width, height);
     let n_pixels = (width * height) as f64;
+    let mut i = 0;
 
-    for (x, y, pixel) in img.enumerate_pixels_mut() {
-        println!("Doing pixel ({}, {})", x, y);
-        print_progress((x + y * width) as f64 / n_pixels);
-        *pixel = rgb_to_u8(&rgb_01_to_255(&scene.background()));
+    for (x, y_inverted, pixel) in img.enumerate_pixels_mut() {
+        print_progress(i as f64 / n_pixels);
 
-        let ray = scene.camera().pixel_ray((x as f64, (height - 1 - y) as f64)).unwrap();
-
-        // Find closest intersection
-        let intersect_opt = scene.intersects(&ray);
-
-        if let Some(intersect) = intersect_opt {
-            match intersect.object {
-                Object::Light(ref l) => {
-                    // Paint the light with its diffuse color
-                    *pixel = rgb_to_u8(&rgb_01_to_255(&l.light_material().diffuse_intensity));
-                },
-                Object::Surface(ref s) => {
-                    // Cast light rays and compute diffuse component
-                    let mut diffuse = Rgb { data: [0., 0., 0.] };
-                    let mut specular = Rgb { data: [0., 0., 0.] };
-                    let surface_normal = intersect.face.normal();
-                    for light in scene.lights() {
-                        let mut i = 0;
-                        loop {
-                            let p = light.random_on_face();
-                            let light_ray = Ray::between(intersect.position, p);
-                            match scene.intersects(&light_ray) {
-                                None => (),
-                                Some(light_inter) => {
-                                    if light_inter.object == Object::from_light(light.clone()) {
-                                        let ray_diffuse_color = light.shade_diffuse(surface_normal, &intersect.object, &light_ray, &light_inter);
-                                        let ray_specular_color = light.shade_specular(scene.camera().eye_position(), surface_normal, &intersect.object, &light_ray, &light_inter);
-                                        diffuse = rgb_add(&diffuse, &ray_diffuse_color);
-                                        specular = rgb_add(&specular, &ray_specular_color);
-                                    }
-                                }
-                            }
-                            if i == RAYS_PER_PIXEL {
-                                break;
-                            }
-                            i += 1;
-                        }
-                        diffuse = rgb_div(&diffuse, RAYS_PER_PIXEL as f64);
-                        specular = rgb_div(&specular, RAYS_PER_PIXEL as f64);
-                        let mut color = rgb_add(&diffuse, &s.material().ambient_color());
-                        color = rgb_add(&color, &specular);
-                        *pixel = rgb_to_u8(&rgb_01_to_255(&rgb_clamp_0_1(&color)));
-                    }
-                }
+        let step = 1. / N as f64;
+        let y = height - 1 - y_inverted;
+        let mut yf = y as f64;
+        let mut energy = Rgb { data: [0., 0., 0.] };
+        while yf < (y + 1) as f64 {
+            let mut xf = x as f64;
+            while xf < (x + 1) as f64 {
+                let ray = scene.camera().pixel_ray((xf, yf)).unwrap();
+                let ray_energy = ray_energy(scene, &ray);
+                energy = rgb_add(&energy, &ray_energy);
+                xf += step;
             }
+            yf += step;
         }
-        else {
-            *pixel = rgb_to_u8(&rgb_01_to_255(&scene.background()));
-        }
+        energy = rgb_clamp_0_1(&rgb_div(&energy, N2 as f64));
+        *pixel = rgb_to_u8(&rgb_01_to_255(&correct_gamma(&energy)));
+        i += 1;
     }
-        img
-    }
+    img
+}
 
 fn main() {
     let args: Args = Args::docopt().decode().unwrap_or_else(|e| e.exit());
@@ -120,8 +136,8 @@ fn main() {
 
     let ambient = Rgb { data: [0.1, 0.1, 0.1] };
     let material_blue   = Phong::new(ambient,
-                                     Rgb { data: [0.1, 0.2, 0.7] },
-                                     Rgb { data: [0.7, 0.7, 0.9] },
+                                     Rgb { data: [0.1, 0.2, 0.8] },
+                                     Rgb { data: [0.4, 0.4, 0.9] },
                                      2.);
     let material_grey   = Phong::new(ambient,
                                      Rgb { data: [0.6, 0.6, 0.6] },
