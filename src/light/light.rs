@@ -2,7 +2,7 @@ use material::{LightMaterial};
 use objects::*;
 use nalgebra::*;
 use ray::Ray;
-use intersection::{ray_face, Intersection};
+use intersection::Intersection;
 use image::Rgb;
 use util::*;
 use std::f64::consts::PI;
@@ -39,15 +39,15 @@ impl Light {
     }
 
     pub fn shade_specular(&self, eye: Point3<f64>, n: Vector3<f64>, obj: &Object,
-                          ray: &Ray, inter: &Intersection) -> Rgb<f64> {
-        let l = (inter.position - ray.origin).normalize();
+                          ray: &Ray) -> Rgb<f64> {
+        let l = ray.direction.normalize();
         let dln = l.dot(&n);
         let r = 2. * dln * n - l;
         let v = (eye - ray.origin).normalize();
         let d = r.dot(&v).powf(obj.material().shininess());
         let norm_factor = (obj.material().shininess() + 2.) / (2. * PI);
         let mut c = rgb_mul(&self.material.specular_intensity, d * norm_factor);
-        c = rgb_mul2(&c, &obj.material().specular_color());
+        c = rgb_clamp_0_1(&rgb_mul2(&c, &obj.material().specular_color()));
 
         c
     }
