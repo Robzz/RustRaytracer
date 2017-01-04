@@ -5,11 +5,11 @@ pub struct Jittered;
 pub struct Uniform;
 
 pub trait PixelSampler {
-    fn samples(&mut self, pixel: (u32, u32), n: u32) -> Vec<(f64, f64)>;
+    fn samples(&self, pixel: (u32, u32), n: u32) -> Vec<(f64, f64)>;
 }
 
 impl PixelSampler for Uniform {
-    fn samples(&mut self, pixel: (u32, u32), n: u32) -> Vec<(f64, f64)> {
+    fn samples(&self, pixel: (u32, u32), n: u32) -> Vec<(f64, f64)> {
         let step = 1. / n as f64;
         let mut v = vec!();
         let (px, py) = pixel;
@@ -29,7 +29,7 @@ impl PixelSampler for Uniform {
 }
 
 impl PixelSampler for Random {
-    fn samples(&mut self, pixel: (u32, u32), n: u32) -> Vec<(f64, f64)> {
+    fn samples(&self, pixel: (u32, u32), n: u32) -> Vec<(f64, f64)> {
         let (px, py) = pixel;
         let mut rng = thread_rng();
         let n2 = n * n;
@@ -42,7 +42,7 @@ impl PixelSampler for Random {
 }
 
 impl PixelSampler for Jittered {
-    fn samples(&mut self, pixel: (u32, u32), n: u32) -> Vec<(f64, f64)> {
+    fn samples(&self, pixel: (u32, u32), n: u32) -> Vec<(f64, f64)> {
         let step = 1. / n as f64;
         let mut v = vec!();
         let (px, py) = pixel;
