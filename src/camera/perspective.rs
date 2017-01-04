@@ -12,8 +12,16 @@ pub struct Perspective {
 }
 
 impl Perspective {
-    pub fn new(viewport: (u32, u32), fov: (f64, f64), transform: Isometry3<f64>) -> Perspective {
+    pub fn fov(viewport: (u32, u32), fov: (f64, f64), transform: Isometry3<f64>) -> Perspective {
         Perspective { viewport: viewport, fov: fov, transform: transform }
+    }
+
+    pub fn aspect_ratio_fovx(viewport: (u32, u32), fovx: f64, transform: Isometry3<f64>) -> Perspective {
+        Perspective { viewport: viewport, fov: (fovx, fovx / (viewport.0 as f64 / viewport.1 as f64)), transform: transform }
+    }
+
+    pub fn aspect_ratio_fovy(viewport: (u32, u32), fovy: f64, transform: Isometry3<f64>) -> Perspective {
+        Perspective { viewport: viewport, fov: (fovy * (viewport.0 as f64 / viewport.1 as f64), fovy), transform: transform }
     }
 }
 
@@ -52,7 +60,7 @@ mod tests {
 
     #[test]
     fn test_pixel_ray_bottom_left() {
-        let cam = Perspective::new((800, 600), ((90.).to_radians(), (90.).to_radians()), Isometry3::one());
+        let cam = Perspective::fov((800, 600), ((90.).to_radians(), (90.).to_radians()), Isometry3::one());
         let ray_opt = cam.pixel_ray((0., 0.));
         let ray = ray_opt.unwrap();
         assert!(ray.origin.approx_eq(&Point3::new(0., 0., 0.)));
@@ -62,7 +70,7 @@ mod tests {
 
     #[test]
     fn test_pixel_ray_top_right() {
-        let cam = Perspective::new((800, 600), ((90.).to_radians(), (90.).to_radians()), Isometry3::one());
+        let cam = Perspective::fov((800, 600), ((90.).to_radians(), (90.).to_radians()), Isometry3::one());
         let ray_opt = cam.pixel_ray((799., 599.));
         let ray = ray_opt.unwrap();
         assert!(ray.origin.approx_eq(&Point3::new(0., 0., 0.)));
