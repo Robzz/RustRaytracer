@@ -8,17 +8,20 @@ pub struct Intersection<'a> {
     pub position: Point3<f64>,
     pub distance: f64,
     pub normal: Vector3<f64>,
+    pub ray: Ray,
     pub object: &'a Object
 }
 
 impl<'a> Intersection<'a> {
     pub fn new(position: Point3<f64>, distance: f64, normal: Vector3<f64>,
-               object: &'a Object) -> Intersection<'a> {
+               ray: Ray, object: &'a Object) -> Intersection<'a> {
         Intersection { position: position, distance: distance, normal: normal,
-                       object: object }
+                       ray: ray, object: object }
     }
 }
 
+/// Holds the intersection point, the distance to the intersection from the ray's origin, and the
+/// surface normal at the intersection.
 pub type HitRecord = (Point3<f64>, f64, Vector3<f64>);
 
 pub fn closest_intersection(intersections: Vec<Intersection>) -> Option<Intersection> {
@@ -64,7 +67,7 @@ mod tests {
         let d = 5.;
         let f = Face::new(1., 1., Isometry3::one(), StdBox::new(Simple::new(Rgb { data: [0., 0., 0.] })));
         let obj = Object::from_surface(Surface::from_face(f.clone()));
-        let i = Intersection::new(pos, d, f.normal(), &obj);
+        let i = Intersection::new(pos, d, f.normal(), Ray::new(Point3::new(0., 0., 0.), Vector3::x()), &obj);
         assert!(i.position == pos);
         assert!(i.distance == d);
     }

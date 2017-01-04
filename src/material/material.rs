@@ -1,7 +1,7 @@
 use image::Rgb;
 use std::fmt::Debug;
 
-pub trait Material: Debug {
+pub trait Material: Debug + Sync {
     fn diffuse_color(&self) -> Rgb<f64>;
     fn ambient_color(&self) -> Rgb<f64>;
     fn specular_color(&self) -> Rgb<f64>;

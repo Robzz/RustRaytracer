@@ -1,7 +1,7 @@
 use nalgebra::*;
 use objects::Face;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Ray {
     pub origin: Point3<f64>,
     pub direction: Vector3<f64>

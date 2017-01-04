@@ -1,13 +1,17 @@
 use image::*;
 use nalgebra::*;
+use rayon::prelude::*;
 
 use std::boxed::Box as StdBox;
+use std::sync::{Arc, Mutex};
 
+use intersection::Intersection;
+use light::Light;
 use objects::*;
 use ray::Ray;
+use raytracer::sampler::*;
 use scene::Scene;
 use util::*;
-use raytracer::sampler::*;
 
 pub struct SimpleSettings<F: Fn(f64)> {
     pub n_samples: u32,
@@ -21,14 +25,35 @@ pub struct Simple<S: PixelSampler, F: Fn(f64)> {
     sampler: S
 }
 
+pub trait Renderer {
+    fn render(&self) -> RgbImage;
+}
+
+pub trait ParallelRenderer {
+    fn render_parallel(&self) -> RgbImage;
+}
+
 impl<S: PixelSampler, F: Fn(f64)> Simple<S, F> {
     pub fn new(scene: Scene, settings: SimpleSettings<F>, sampler: S) -> Simple<S, F> {
         Simple { scene: scene, settings: settings, sampler: sampler }
     }
 
-    fn ray_energy(&self, ray: &Ray) -> Rgb<f64> {
+    fn cast_shadow_ray(&self, i: &Intersection, light: &Light) -> Option<Intersection> {
+        let surface_normal = i.normal;
+        let p = light.random_on_face();
+        let ray_direction = p - i.position;
+        let shadow_ray = Ray::new(i.position, ray_direction);
+        match self.scene.intersects(shadow_ray) {
+            None => None,
+            Some(inter) => { if surface_normal.dot(&ray_direction) > 0. &&
+                                inter.object == &Object::from_light(light.clone())
+                                { Some(inter) } else { None }}
+        }
+    }
+
+    fn ray_energy(&self, ray: Ray) -> Rgb<f64> {
         // Find closest intersection
-        let intersect_opt = self.scene.intersects(&ray);
+        let intersect_opt = self.scene.intersects(ray);
         let mut pixel;
 
         if let Some(intersect) = intersect_opt {
@@ -42,19 +67,12 @@ impl<S: PixelSampler, F: Fn(f64)> Simple<S, F> {
                     let surface_normal = intersect.normal;
                     pixel = intersect.object.material().ambient_color();
                     for light in self.scene.lights() {
-                        let p = light.random_on_face();
-                        let ray_direction = p - intersect.position;
-                        let light_ray = Ray::new(intersect.position, ray_direction);
-                        if surface_normal.dot(&ray_direction) > 0. {
-                            match self.scene.intersects(&light_ray) {
-                                None => (),
-                                Some(light_inter) => {
-                                    if light_inter.object == &Object::from_light(light.clone()) {
-                                        let ray_diffuse_color = light.shade_diffuse(surface_normal, &intersect.object, &light_ray, &light_inter);
-                                        let ray_specular_color = light.shade_specular(self.scene.camera().eye_position(), surface_normal, &intersect.object, &light_ray);
-                                        pixel = rgb_add(&rgb_add(&ray_diffuse_color, &ray_specular_color), &pixel);
-                                    }
-                                }
+                        match self.cast_shadow_ray(&intersect, light) {
+                            None => (),
+                            Some(inter) => {
+                                let ray_diffuse_color = light.shade_diffuse(&intersect, &inter);
+                                let ray_specular_color = light.shade_specular(self.scene.camera().eye_position(), &intersect, &inter);
+                                pixel = rgb_add(&rgb_add(&ray_diffuse_color, &ray_specular_color), &pixel);
                             }
                         }
                     }
@@ -66,8 +84,12 @@ impl<S: PixelSampler, F: Fn(f64)> Simple<S, F> {
         }
         pixel
     }
+}
 
-    pub fn render(&mut self) -> RgbImage {
+impl<S, P> Renderer for Simple<S, P>
+    where S: PixelSampler, P: Fn(f64)
+{
+    fn render(&self) -> RgbImage {
         let (width, height) = self.scene.camera().viewport();
         let mut img = RgbImage::new(width, height);
         let n2 = (self.settings.n_samples * self.settings.n_samples) as f64;
@@ -80,7 +102,7 @@ impl<S: PixelSampler, F: Fn(f64)> Simple<S, F> {
             for sample in self.sampler.samples((x, y), self.settings.n_samples) {
                 let (xf, yf) = sample;
                 let ray = self.scene.camera().pixel_ray((xf, yf)).unwrap();
-                energy = rgb_add(&energy, &self.ray_energy(&ray));
+                energy = rgb_add(&energy, &self.ray_energy(ray));
             }
             energy = rgb_clamp_0_1(&rgb_div(&energy, n2));
             *pixel = rgb_to_u8(&rgb_01_to_255(&energy));
@@ -88,6 +110,48 @@ impl<S: PixelSampler, F: Fn(f64)> Simple<S, F> {
             if let Some(ref cb) = self.settings.progress_callback {
                 i += 1.;
                 cb(i / n_samples);
+            }
+        }
+        img
+    }
+}
+
+impl<S, P> ParallelRenderer for Simple<S, P>
+    where S: PixelSampler + Sync,
+          P: Fn(f64) + Sync
+{
+    fn render_parallel(&self) -> RgbImage {
+        let (width, height) = self.scene.camera().viewport();
+        let n2 = (self.settings.n_samples * self.settings.n_samples) as f64;
+        let rows = (0..height).into_iter().map(|y| { (0..width).into_iter().map(|x| (x, y)).collect::<Vec<(u32, u32)>>() })
+                                          .collect::<Vec<Vec<(u32, u32)>>>();
+        let i = Arc::new(Mutex::new(0.));
+
+        let pixels : Vec<Vec<((u32, u32), Rgb<u8>)>> = rows.par_iter().map(|row| -> Vec<((u32, u32), Rgb<u8>)> {
+            let row_pixels = row.into_iter().map(|&(x, y)| {
+                let mut energy = Rgb { data: [0., 0., 0.] };
+                for sample in self.sampler.samples((x, y), self.settings.n_samples) {
+                    let (xf, yf) = sample;
+                    let ray = self.scene.camera().pixel_ray((xf, yf)).unwrap();
+                    energy = rgb_add(&energy, &self.ray_energy(ray));
+                }
+                energy = rgb_clamp_0_1(&rgb_div(&energy, n2));
+                let pixel = rgb_to_u8(&rgb_01_to_255(&energy));
+                ((x, y), pixel)
+
+            }).collect();
+            if let Some(ref cb) = self.settings.progress_callback {
+                let mut i_mut = i.lock().unwrap();
+                *i_mut += 1.;
+                cb(*i_mut / height as f64);
+            }
+            row_pixels
+        }).collect();
+
+        let mut img = RgbImage::new(width, height);
+        for row in pixels {
+            for ((x, y), pixel) in row {
+                img.put_pixel(x, height - 1 - y, pixel);
             }
         }
         img

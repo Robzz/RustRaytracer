@@ -5,6 +5,7 @@ extern crate image;
 extern crate nalgebra;
 extern crate num_traits;
 extern crate rand;
+extern crate rayon;
 
 pub mod algebra;
 pub mod camera;

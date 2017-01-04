@@ -28,26 +28,27 @@ impl Light {
         &self.material
     }
 
-    pub fn shade_diffuse(&self, n: Vector3<f64>, obj: &Object, ray: &Ray, inter: &Intersection) -> Rgb<f64> {
-        let l = (inter.position - ray.origin).normalize();
-        let d = l.dot(&n);
+    pub fn shade_diffuse(&self, obj_inter: &Intersection, shadow_ray_inter: &Intersection) -> Rgb<f64> {
+        let l = shadow_ray_inter.ray.direction.normalize();
+        let d = l.dot(&obj_inter.normal);
         let norm_factor = 1. / PI;
         let mut c = rgb_mul(&self.material.diffuse_intensity, d * norm_factor);
-        c = rgb_mul2(&c, &obj.material().diffuse_color());
+        c = rgb_mul2(&c, &obj_inter.object.material().diffuse_color());
 
         c
     }
 
-    pub fn shade_specular(&self, eye: Point3<f64>, n: Vector3<f64>, obj: &Object,
-                          ray: &Ray) -> Rgb<f64> {
-        let l = ray.direction.normalize();
+    pub fn shade_specular(&self, eye: Point3<f64>, obj_inter: &Intersection,
+                          shadow_ray_inter: &Intersection) -> Rgb<f64> {
+        let l = shadow_ray_inter.ray.direction.normalize();
+        let n = obj_inter.normal;
         let dln = l.dot(&n);
         let r = 2. * dln * n - l;
-        let v = (eye - ray.origin).normalize();
-        let d = r.dot(&v).powf(obj.material().shininess());
-        let norm_factor = (obj.material().shininess() + 2.) / (2. * PI);
+        let v = (eye - obj_inter.ray.origin).normalize();
+        let d = r.dot(&v).powf(obj_inter.object.material().shininess());
+        let norm_factor = (obj_inter.object.material().shininess() + 2.) / (2. * PI);
         let mut c = rgb_mul(&self.material.specular_intensity, d * norm_factor);
-        c = rgb_clamp_0_1(&rgb_mul2(&c, &obj.material().specular_color()));
+        c = rgb_clamp_0_1(&rgb_mul2(&c, &obj_inter.object.material().specular_color()));
 
         c
     }

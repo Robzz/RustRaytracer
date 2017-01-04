@@ -103,25 +103,25 @@ impl Object {
 //}
 
 impl Intersectable for Object {
-    fn intersects(&self, ray: &Ray) -> Option<Intersection> {
+    fn intersects(&self, ray: Ray) -> Option<Intersection> {
         match self {
             &Object::Light(ref l) => {
-                match ray_face(ray, &l.face) {
-                    Some(hit) => Some(Intersection::new(hit.0, hit.1, hit.2, self)),
+                match ray_face(&ray, &l.face) {
+                    Some(hit) => Some(Intersection::new(hit.0, hit.1, hit.2, ray, self)),
                     None => None
                 }
             }
             &Object::Surface(ref s) => {
                 match s {
                     &Surface::Face(ref f) => {
-                        match ray_face(ray, f) {
-                            Some(hit) => Some(Intersection::new(hit.0, hit.1, hit.2, self)),
+                        match ray_face(&ray, f) {
+                            Some(hit) => Some(Intersection::new(hit.0, hit.1, hit.2, ray, self)),
                             None => None
                         }
                     }
                     &Surface::Box(ref b) => {
-                        match ray_box(ray, b) {
-                            Some(hit) => Some(Intersection::new(hit.0, hit.1, hit.2, self)),
+                        match ray_box(&ray, b) {
+                            Some(hit) => Some(Intersection::new(hit.0, hit.1, hit.2, ray, self)),
                             None => None
                         }
                     }

@@ -45,8 +45,8 @@ impl Scene {
 }
 
 impl Intersectable for Scene {
-    fn intersects(&self, ray: &Ray) -> Option<Intersection> {
-        let intersections = filter_nones(self.objects.iter().map(|o| o.intersects(ray)).collect());
+    fn intersects(&self, ray: Ray) -> Option<Intersection> {
+        let intersections = filter_nones(self.objects.iter().map(|o| o.intersects(ray.clone())).collect());
         closest_intersection(intersections)
     }
 }

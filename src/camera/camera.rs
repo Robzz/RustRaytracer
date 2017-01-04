@@ -1,7 +1,7 @@
 use ray::Ray;
 use nalgebra::Point3;
 
-pub trait Camera {
+pub trait Camera: Sync {
     fn viewport(&self) -> (u32, u32);
     fn set_viewport(&mut self, viewport: (u32, u32));
 
